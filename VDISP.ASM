@@ -12,9 +12,9 @@ ScrWidth	equ	78
 ScrHeight	equ	24
 ;@8275		equ	0f7c0h
 ;@8257		equ	0f7e0h
-@8275		equ	0C000h
-@8257		equ	0E000h
-@PALM_CTR	equ	0CE00h
+;@8275		equ	0C000h
+;@8257		equ	0E000h
+;@PALM_CTR	equ	0CE00h
 
 
 ; Global routines (see apropriate def. for more info)
@@ -31,11 +31,36 @@ ScrHeight	equ	24
 ; External routines
 	extrn	RdAtEnd	; Read next portion at and of
 			; ram buffer
+_in::	INR	H
+	DCR	H
+	JZ	_in_port
+	MOV	A,M
+	RET
+_in_port:
+	MOV	A,L
+	STA	$+4
+	IN	0
+	RET
+
+_out::	INR	H
+	DCR	H
+	jz	_out_port
+	MOV	M,A
+	RET
+_out_port:
+	PUSH	PSW
+	MOV	A,L
+	STA	$+5
+	POP	PSW
+	OUT	0
+	RET
 
 ; Note: this routine should be called once at start of program
 DispInit:
 	mvi	a,80h
-	sta	@PALM_CTR
+	;sta	@PALM_CTR
+	LHLD	PALM_CTR_ADR##
+	call	_out
 
 	lxi	h,0
 	shld	RomCounter
@@ -385,33 +410,69 @@ End_Tr:	ret
 
 RUSTABL:DB	'abwgdevzijklmnoprstufhc~{}yx|`q'
 
-SETSCR:	LXI	H,@8275+1
-	MVI	M,0
+SETSCR:	;LXI	H,@8275+1
+	lhld	DISP_ADR##
+	inx	h
+	;MVI	M,0
+	xra	a
+	call	_out
+
 	DCX	H
 ;	MVI	M,4FH
 ;	MVI	M,1CH
 ;	MVI	M,99H
 ;	MVI	M,09DH
-	MVI	M,4DH
-	MVI	M,5DH
-	MVI	M,0FFH
-	MVI	M,18H
-	INX	H
-	MVI	M,27H
 
-SetDma:	lxi	h,@8275+1
-	MOV	A,M
-	MOV	A,M
+;	MVI	M,4DH
+;	MVI	M,5DH
+;	MVI	M,0FFH
+;	MVI	M,18H
+;	INX	H
+;	MVI	M,27H
+
+	MVI	A,4DH
+	call	_out
+	MVI	A,5DH
+	call	_out
+	MVI	A,0FFH
+	call	_out
+	MVI	A,18H
+	call	_out
+	INX	H
+	MVI	A,27H
+	call	_out
+
+SetDma:	;lxi	h,@8275+1
+	lhld	DISP_ADR##
+	inx	h
+
+;	MOV	A,M
+	call	_in
+WtRvv:
+;	MOV	A,M
+	call	_in
 	ANI	20H
-	JZ	$-3
-	LXI	H,@8257+8
-	MVI	M,80H
-	MVI	L,low(@8257)+4
+	JZ	WtRvv
+
+	;LXI	H,@8257+8
+	LHLD	DMA_ADR##
+	lxi	b,8
+	dad	b
+
+	MVI	A,80H
+	call	_out
+
+	;MVI	L,low(@8257)+4
+	mov	a,l
+	sui	4
+	mov	l,a
 	xchg
 	lhld	ScrAdr
 	xchg
-	mov	m,e
-	mov	m,d
+	mov	a,e
+	call	_out
+	mov	a,d
+	call	_out
 	INX	H
 	xchg
 	lhld	RomCounter
@@ -419,11 +480,17 @@ SetDma:	lxi	h,@8275+1
 	lxi	b,4923h
 	dad	b
 	xchg
-	mov	m,e
-	mov	m,d
-	MVI	L,low(@8257)+8
-	MVI	M,0a4h
-	RET
+	mov	a,e
+	call	_out
+	mov	a,d
+	call	_out
+	inx	h
+	inx	h
+	inx	h
+	;MVI	L,low(@8257)+8
+	MVI	a,0a4h
+	jmp	_out
+	;RET
 
 	dseg
 ScrAdr:		ds	2

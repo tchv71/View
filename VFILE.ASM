@@ -5,7 +5,21 @@
 
 PageSize	equ	23
 ;@8255_1		equ	0f782h
-@8255_1		equ	0C200h
+;@8255_1		equ	0C200h
+extrn	_in, _out
+
+	dseg
+VRAM_ADR::	DW 0B770h	; VRAM buffer visible start address - 0B7C2h
+PPI_ADR::	DW 0C200h 	; VV55 keyboard Controller - 0C200h
+PPI2_ADR::	DW 0C400h	; VV55 additional PPI  - 0C400h
+DISP_ADR::	DW 0C000h	; VG75 Display Controller - 0C000h
+DMA_ADR::	DW 0E000h	; VT57 DMA Controller - 0E000h
+
+PALM_CTR_ADR::	DW 0CE00h	; Palmira Control Byte
+		DW 0,0,0	; Reserved for future use
+	cseg
+
+
 
 ; BDOS system calls
 @getche	 equ	1
@@ -78,7 +92,13 @@ nxt:	lhld	DispldText
 	cpi	3
 	jz	ext
 	mov	b,a
-	lda	@8255_1+2
+	;lda	@8255_1+2
+	push	h
+	lhld	PPI2_ADR
+	inx	h
+	inx	h
+	call	_in
+	pop	h
 	ani	40h
 	mov	a,b
 	jz	Page

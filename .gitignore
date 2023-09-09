@@ -361,3 +361,8 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+*.PRN
+/VEND.REL
+/VDISP.REL
+/VFILE.REL
+*.SYM
