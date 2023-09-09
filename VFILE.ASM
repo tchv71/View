@@ -56,7 +56,11 @@ extrn	RamStart	; External label - start of
 
 public	Ram_Start
 
-Strt:	lxi	h,RamStart
+Strt:
+	lxi	d,VRAM_ADR
+	call	BIOS_CONFIG	; Configure ports
+
+	lxi	h,RamStart
 	shld	Ram_Start
 	call	OpenFil	; Open file, set RecSize
 
@@ -88,13 +92,13 @@ Strt:	lxi	h,RamStart
 	call	DispInit
 nxt:	lhld	DispldText
 	call	DisplyScr
-	call	0f803h
+	call	BIOS_CONIN
 	cpi	3
 	jz	ext
 	mov	b,a
 	;lda	@8255_1+2
 	push	h
-	lhld	PPI2_ADR
+	lhld	PPI_ADR
 	inx	h
 	inx	h
 	call	_in
@@ -107,6 +111,39 @@ nxt:	lhld	DispldText
 	cpi	1ah
 	jz	StrDn
 	jmp	nxt
+
+BIOS_CONFIG:
+	LHLD	1
+	LXI	B,30H
+	DAD	B
+	MOV	A,M
+	CPI	JMP
+	RNZ
+	INX	H
+	PUSH	D
+	MOV	E,M
+	INX	H
+	MOV	D,M
+	XCHG
+	POP	D
+	PCHL
+
+BIOS_CONIN:
+	LHLD	1
+	LXI	D,6
+	DAD	D
+	INX	H
+	MOV	E,M
+	INX	H
+	MOV	D,M
+	XCHG
+	INX	H
+	MOV	E,M
+	INX	H
+	MOV	D,M
+	XCHG
+	PCHL
+
 
 Page:	cpi	19h
 	jz	PgUp

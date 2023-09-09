@@ -57,11 +57,14 @@ _out_port:
 
 ; Note: this routine should be called once at start of program
 DispInit:
-	mvi	a,80h
 	;sta	@PALM_CTR
 	LHLD	PALM_CTR_ADR##
+	mov	a,h
+	ora	l
+	jz	DispI01
+	mvi	a,80h
 	call	_out
-
+DispI01:
 	lxi	h,0
 	shld	RomCounter
 	lxi	h,Scr1
