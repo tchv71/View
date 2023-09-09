@@ -260,8 +260,7 @@ _EndChain:
 	ora	a	; Clear cy - not the end of screen
 	ret
 
-;	.	.	.	.	.	.	.
-
+;****************************************************
 ; The second pass - translate intermediate codes
 ;		    into screen codes
 SecondPass:
@@ -345,18 +344,17 @@ Rom1:	mvi	a,80h	; Original RK ROM
 Rom3:	mvi	a,84h	; Extended RK table
 	ret
 
-;	.	.	.	.	.	.
-
+;****************************************************
 CharSet:cpi	20h	; Space
- 	mvi	b,1111b
- 	rz
- 	push	h
- 	push	b
- 	rlc
- 	rlc
- 	rlc
- 	ani	111b
- 	lxi	h,SetTable
+	mvi	b,1111b
+	rz
+	push	h
+	push	b
+	rlc
+	rlc
+	rlc
+	ani	111b
+	lxi	h,SetTable
 	mvi	b,0
 	mov	c,a
 	dad	b
@@ -365,6 +363,8 @@ CharSet:cpi	20h	; Space
 	pop	h
 	ret
 
+; Table of symbol's 3 high order bits to font number
+; Bits in record corresponds fonts 3210
 SetTable:
 IF	1
 	db	1101b	; RK special symbols
@@ -387,7 +387,7 @@ ELSE
 	db	1000b	; Big russian letters
 ENDIF
 
-;	.	.	.	.	.	.
+;****************************************************
 ; Transcode symbol from alt code to KOI8
 TransSym:
 	cpi	80h
@@ -425,10 +425,15 @@ End_Tr:	ret
 
 RUSTABL:DB	'abwgdevzijklmnoprstufhc~{}yx|`q'
 
-SETSCR:	;LXI	H,@8275+1
+@@out	macro	val
+	mvi	a,val
+	call	_out
+	endm
+
+;****************************************************
+SETSCR:
 	lhld	DISP_ADR##
 	inx	h
-	;MVI	M,0
 	xra	a
 	call	_out
 
@@ -438,46 +443,28 @@ SETSCR:	;LXI	H,@8275+1
 ;	MVI	M,99H
 ;	MVI	M,09DH
 
-;	MVI	M,4DH
-;	MVI	M,5DH
-;	MVI	M,0FFH
-;	MVI	M,18H
-;	INX	H
-;	MVI	M,27H
-
-	MVI	A,4DH
-	call	_out
-	MVI	A,5DH
-	call	_out
-	MVI	A,0FFH
-	call	_out
-	MVI	A,18H
-	call	_out
+	@@out	4DH
+	@@out	5DH
+	@@out	0FFH
+	@@out	18H
 	INX	H
-	MVI	A,27H
-	call	_out
+	@@out	27H
 
-SetDma:	;lxi	h,@8275+1
+SetDma:
 	lhld	DISP_ADR##
 	inx	h
-
-;	MOV	A,M
 	call	_in
 WtRvv:
-;	MOV	A,M
 	call	_in
 	ANI	20H
 	JZ	WtRvv
 
-	;LXI	H,@8257+8
 	LHLD	DMA_ADR##
 	lxi	b,8
 	dad	b
 
-	MVI	A,80H
-	call	_out
+	@@out	80H
 
-	;MVI	L,low(@8257)+4
 	mov	a,l
 	sui	4
 	mov	l,a
@@ -505,7 +492,6 @@ WtRvv:
 	;MVI	L,low(@8257)+8
 	MVI	a,0a4h
 	jmp	_out
-	;RET
 
 	dseg
 ScrAdr:		ds	2
