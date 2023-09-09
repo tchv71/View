@@ -1,0 +1,542 @@
+	MACRO-80 3.44	09-Dec-81	PAGE	1
+
+
+                                ;****************** IBM PC file viewer ****************** 
+                                ;*       Displaying module   -    Radio-86rk version 	* 
+                                ;*(c) TCHV  	       		     7-nov-1991, 2:00 pm* 
+                                ;*  Display 8275 and DMA 8257 controllers are required	* 
+                                ;******************************************************** 
+                                 
+                                ;	16-Feb-1992 - change Ram_Start to be variable 
+                                 
+                                ;ScrWidth	equ	80 
+                                ;ScrHeight	equ	24 
+  004E                          ScrWidth	equ	78 
+  0018                          ScrHeight	equ	24 
+                                ;@8275		equ	0f7c0h 
+                                ;@8257		equ	0f7e0h 
+  C000                          @8275		equ	0C000h 
+  E000                          @8257		equ	0E000h 
+  CE00                          @PALM_CTR	equ	0CE00h 
+                                 
+                                 
+                                ; Global routines (see apropriate def. for more info) 
+                                	public	DispInit	; Initialise displaying 
+                                 	public	DisplyScr	; Display a screen of text 
+                                 
+                                ; External adresses 
+                                	extrn	Scr1,Scr2,TransTbl 
+                                ; External variable 
+                                	extrn	Ram_Start 
+                                ; Text delimiters 
+                                	extrn	RamDelim 
+                                	extrn	BuffDelim 
+                                ; External routines 
+                                	extrn	RdAtEnd	; Read next portion at and of 
+                                			; ram buffer 
+                                 
+                                ; Note: this routine should be called once at start of program 
+  0000'                         DispInit: 
+  0000'   3E 80                 	mvi	a,80h 
+  0002'   32 CE00               	sta	@PALM_CTR 
+                                 
+  0005'   21 0000               	lxi	h,0 
+  0008'   22 0004"              	shld	RomCounter 
+  000B'   21 0000*              	lxi	h,Scr1 
+  000E'   22 0000"              	shld	ScrAdr 
+  0011'   21 0000*              	lxi	h,Scr2 
+  0014'   22 0002"              	shld	AltScr 
+  0017'   CD 0044'              	call	ClrScr 
+  001A'   CD 0035'              	call	ChgScrAdr 
+  001D'   CD 0044'              	call	ClrScr 
+  0020'   CD 0242'              	call	SetScr 
+  0023'   21 0000*              	lxi	h,TransTbl 
+  0026'   0E 00                 	mvi	c,0 
+  0028'   79                    @init0:	mov	a,c 
+                                	;call	TransSym 
+  0029'   77                    	mov	m,a 
+  002A'   23                    	inx	h 
+  002B'   CD 01CA'              	call	CharSet 
+	MACRO-80 3.44	09-Dec-81	PAGE	1-1
+
+
+  002E'   70                    	mov	m,b 
+  002F'   23                    	inx	h 
+  0030'   0C                    	inr	c 
+  0031'   C2 0028'              	jnz	@init0 
+  0034'   C9                    	ret 
+                                 
+  0035'                         ChgScrAdr: 
+  0035'   2A 0000"              	lhld	ScrAdr 
+  0038'   EB                    	xchg 
+  0039'   2A 0002"              	lhld	AltScr 
+  003C'   22 0000"              	shld	ScrAdr 
+  003F'   EB                    	xchg 
+  0040'   22 0002"              	shld	AltScr 
+  0043'   C9                    	ret 
+                                 
+                                 
+                                 
+  0044'   2A 0000"              ClrScr:	lhld	ScrAdr 
+  0047'   01 1000               	lxi	b,1000h 
+  004A'   36 00                 ClrLp:	mvi	m,0 
+  004C'   23                    	inx	h 
+  004D'   0B                    	dcx	b 
+  004E'   78                    	mov	a,b 
+  004F'   B1                    	ora	c 
+  0050'   C2 004A'              	jnz	ClrLp 
+  0053'   C9                    	ret 
+                                 
+                                ;	.	.	.	.	.	.	. 
+                                ; Display the screen from HL - pointer to the text 
+  0054'                         DisplyScr: 
+  0054'   CD 005D'              	call	DsplScr 
+  0057'   CD 0253'              	call	SetDma 
+  005A'   C3 0035'              	jmp	ChgScrAdr 
+                                 
+                                ; Variables and registers: 
+                                ;	hl - screen pointer 
+                                ;	de - text pointer 
+                                ;	b - symbols to end of line 
+                                ;	c - not used (globally) 
+                                ;	RomSet - ROM set for current chain 
+                                ;       CurStr - lines to end of screen 
+  005D'   EB                    DsplScr:xchg 
+  005E'   21 0000               	lxi	h,0 
+  0061'   22 0004"              	shld	RomCounter 
+  0064'   2A 0000"              	lhld	ScrAdr 
+  0067'   01 00EA               	lxi	b,3*ScrWidth 
+  006A'   09                    	dad	b 
+  006B'   3E 18                 	mvi	a,ScrHeight 
+  006D'   32 0007"              	sta	CurStr 
+  0070'   06 4E                 	mvi	b,ScrWidth 
+  0072'   E5                    loop:	push	h 
+  0073'   CD 0090'              	call	FirstPass 
+  0076'   2A 0004"              	lhld	RomCounter 
+  0079'   23                    	inx	h 
+  007A'   22 0004"              	shld	RomCounter 
+  007D'   E1                    	pop	h 
+	MACRO-80 3.44	09-Dec-81	PAGE	1-2
+
+
+  007E'   F5                    	push	psw 
+  007F'   CD 013C'              	call	SecondPass 
+  0082'   F1                    	pop	psw 
+  0083'   D2 0072'              	jnc	loop 
+  0086'   06 9C                 	mvi	b,2*ScrWidth 
+  0088'   36 00                 _ClrEnd:mvi	m,0 
+  008A'   23                    	inx	h 
+  008B'   05                    	dcr	b 
+  008C'   C2 0088'              	jnz	_ClrEnd 
+  008F'   C9                    	ret 
+                                 
+                                ; The first pass - Transcode symbol's 
+                                ;		 - Output them to the screen (translate CR/LF) 
+                                ;		 - Determine ROM code for this chain 
+                                ;		 - Terminate chain 
+                                TrnsSym	macro 
+                                	push	h 
+                                	push	d 
+                                	lxi	h,TransTbl 
+                                	mov	e,a 
+                                	mvi	d,0 
+                                	dad	d 
+                                	dad	d 
+                                	mov	a,m 
+                                	inx	h 
+                                	mov	c,m 
+                                	pop	d 
+                                	pop	h 
+                                	endm 
+                                 
+  0090'                         FirstPass: 
+  0090'   23                    	inx	h	; Reserve space for ROM selection byte 
+  0091'   3E 0F                 	mvi	a,0fh 
+  0093'   32 0006"              	sta	RomSet	; Initial set of ROMs for this chain 
+  0096'   1A                    NextSym:ldax	d 
+  0097'   13                    	inx	d 
+  0098'   FE 20                 	cpi	20h 
+  009A'   D2 00C8'              	jnc	SetSym 
+  009D'   FE 09                 	cpi	9h 
+  009F'   CA 0124'              	jz	_Tab 
+  00A2'   FE 0D                 	cpi	0dh 
+  00A4'   CA 00EA'              	jz	_EndStr 
+  00A7'   FE 0A                 	cpi	0ah 
+  00A9'   CA 0096'              	jz	NextSym	; Skip LF symbol 
+  00AC'   FE 00*                	cpi	RamDelim 
+  00AE'   CA 0106'              	jz	_EndRam 
+  00B1'   FE 00*                	cpi	BuffDelim 
+  00B3'   CA 010E'              	jz	_EndBuff ; Read next record of file 
+  00B6'   FE 1A                 	cpi	1ah 
+  00B8'   C2 00C6'              	jnz	StSym 
+  00BB'   36 20                 	mvi	m,20h 
+  00BD'   23                    	inx	h 
+  00BE'   1B                    	dcx	d 
+  00BF'   05                    	dcr	b 
+  00C0'   CA 00F6'              	jz	_NxtStr 
+  00C3'   C3 0096'              	jmp	NextSym 
+	MACRO-80 3.44	09-Dec-81	PAGE	1-3
+
+
+  00C6'   3E 20                 StSym:	mvi	a,20h	; Other CNTRL symbols are not displayed 
+  00C8'                         SetSym:	TrnsSym	; a = Translated symbol , c=its ROM set 
+  00C8'   E5              +     	push	h 
+  00C9'   D5              +     	push	d 
+  00CA'   21 0000*        +     	lxi	h,TransTbl 
+  00CD'   5F              +     	mov	e,a 
+  00CE'   16 00           +     	mvi	d,0 
+  00D0'   19              +     	dad	d 
+  00D1'   19              +     	dad	d 
+  00D2'   7E              +     	mov	a,m 
+  00D3'   23              +     	inx	h 
+  00D4'   4E              +     	mov	c,m 
+  00D5'   D1              +     	pop	d 
+  00D6'   E1              +     	pop	h 
+  00D7'   77                    	mov	m,a 
+  00D8'   3A 0006"              	lda	RomSet 
+  00DB'   A1                    	ana	c 
+  00DC'   CA 0137'              	jz	_EndChain 
+  00DF'   32 0006"              	sta	RomSet 
+  00E2'   23                    	inx	h 
+  00E3'   05                    	dcr	b 
+  00E4'   C2 0096'              	jnz	NextSym 
+  00E7'   C3 00F6'              	jmp	_NxtStr 
+                                 
+  00EA'   04                    _EndStr:inr	b 
+  00EB'   05                    	dcr	b 
+  00EC'   CA 00F6'              	jz	_NxtStr 
+  00EF'   36 20                 _SetEnd:mvi	m,20h	; We can freely fill with space 
+  00F1'   23                    	inx	h 
+  00F2'   05                    	dcr	b 
+  00F3'   C2 00EF'              	jnz	_SetEnd 
+                                 
+  00F6'   06 4E                 _NxtStr:mvi	b,ScrWidth 
+  00F8'   3A 0007"              	lda	CurStr 
+  00FB'   3D                    	dcr	a 
+  00FC'   32 0007"              	sta	CurStr 
+  00FF'   C2 0096'              	jnz	NextSym 
+  0102'   36 00                 	mvi	m,0	; Terminate chain 
+  0104'   37                    	stc	; The end of screen 
+  0105'   C9                    	ret 
+                                 
+  0106'   EB                    _EndRam:xchg 
+  0107'   2A 0000*              	lhld	Ram_Start 
+  010A'   EB                    	xchg 
+  010B'   C3 0096'              	jmp	NextSym 
+                                 
+  010E'                         _EndBuff: 
+  010E'   E5                    	push	h 
+  010F'   2A 0000*              	lhld	BuffEnd## 
+  0112'   1B                    	dcx	d 
+  0113'   CD 0000*              	call	?cdehl## 
+  0116'   13                    	inx	d 
+  0117'   3E 00*                	mvi	a,BuffDelim 
+  0119'   E1                    	pop	h 
+  011A'   C2 00C8'              	jnz	SetSym 
+                                 
+	MACRO-80 3.44	09-Dec-81	PAGE	1-4
+
+
+  011D'   CD 0000*              	call	RdAtEnd 
+  0120'   1B                    	dcx	d 
+  0121'   C3 0096'              	jmp	NextSym 
+                                 
+  0124'   78                    _Tab:	mov	a,b 
+  0125'   3D                    	dcr	a 
+  0126'   E6 07                   	ani	7 
+  0128'   3C                    	inr	a 
+  0129'   36 20                 _SetTab:mvi	m,20h	;   Space is located in any ROM 
+  012B'   23                    	inx	h	; and current ROM set are to be 
+  012C'   05                    	dcr	b	; unchanged 
+  012D'   CA 00F6'              	jz	_NxtStr 
+  0130'   3D                    	dcr	a 
+  0131'   C2 0129'              	jnz	_SetTab 
+  0134'   C3 0096'              	jmp	NextSym 
+                                 
+  0137'                         _EndChain: 
+  0137'   36 00                 	mvi	m,0	; Terminate chain 
+  0139'   1B                    	dcx	d	; ungetc last symbol 
+  013A'   B7                    	ora	a	; Clear cy - not the end of screen 
+  013B'   C9                    	ret 
+                                 
+                                ;	.	.	.	.	.	.	. 
+                                 
+                                ; The second pass - translate intermediate codes 
+                                ;		    into screen codes 
+  013C'                         SecondPass: 
+  013C'   3A 0006"              	lda	RomSet 
+  013F'   CD 01AC'              	call	GetRomCode 
+  0142'   77                    	mov	m,a 
+  0143'   FE 80                 	cpi	80h 
+  0145'   CA 019B'              	jz	CrRom1 
+  0148'   FE 81                 	cpi	81h 
+  014A'   CA 016B'              	jz	CrRom2 
+  014D'   FE 84                 	cpi	84h 
+  014F'   CA 0163'              	jz	CrRom3 
+                                 
+                                check	macro 
+                                	inx	h 
+                                	mov	a,m 
+                                	ora	a 
+                                	rz 
+                                	endm 
+                                 
+                                cont	macro	label 
+                                	mov	m,a 
+                                	jmp	label 
+                                	endm 
+                                 
+  0152'                         CrRom4:	check 
+  0152'   23              +     	inx	h 
+  0153'   7E              +     	mov	a,m 
+  0154'   B7              +     	ora	a 
+  0155'   C8              +     	rz 
+  0156'   FE 40                 	cpi	40h	; Digits and special symbols 
+  0158'   DA 015F'              	jc	@set4 
+	MACRO-80 3.44	09-Dec-81	PAGE	1-5
+
+
+  015B'   E6 7F                 	ani	7fh 
+  015D'   EE 20                 	xri	20h 
+  015F'                         @set4:	cont	CrRom4 
+  015F'   77              +     	mov	m,a 
+  0160'   C3 0152'        +     	jmp	CrRom4 
+                                 
+  0163'                         CrRom3:	check 
+  0163'   23              +     	inx	h 
+  0164'   7E              +     	mov	a,m 
+  0165'   B7              +     	ora	a 
+  0166'   C8              +     	rz 
+                                	cont	CrRom3 
+  0167'   77              +     	mov	m,a 
+  0168'   C3 0163'        +     	jmp	CrRom3 
+                                 
+  016B'                         CrRom2:	check 
+  016B'   23              +     	inx	h 
+  016C'   7E              +     	mov	a,m 
+  016D'   B7              +     	ora	a 
+  016E'   C8              +     	rz 
+  016F'   FE 20                 	cpi	20h 
+  0171'   C2 0178'              	jnz	@22 
+  0174'   AF                    	xra	a 
+  0175'   C3 0197'              	jmp	@set2 
+  0178'   FE 80                 @22:	cpi	80h 
+  017A'   D2 0184'              	jnc	@21 
+  017D'   E6 1F                 	ani	1fh 
+  017F'   C6 40                 	adi	40h 
+  0181'   C3 0197'              	jmp	@set2 
+  0184'   FE C0                 @21:	cpi	80h+40h 
+  0186'   D2 0193'              	jnc	@23 
+  0189'   E6 7F                 	ani	7fh 
+  018B'   C2 0197'              	jnz	@set2 
+  018E'   3E 3F                 	mvi	a,3fh 
+  0190'   C3 0197'              	jmp	@set2 
+                                 
+  0193'   E6 1F                 @23:	ani	1fh 
+  0195'   C6 60                 	adi	60h 
+  0197'                         @set2:	cont	CrRom2 
+  0197'   77              +     	mov	m,a 
+  0198'   C3 016B'        +     	jmp	CrRom2 
+                                 
+  019B'                         CrRom1:	check 
+  019B'   23              +     	inx	h 
+  019C'   7E              +     	mov	a,m 
+  019D'   B7              +     	ora	a 
+  019E'   C8              +     	rz 
+  019F'   FE 60                 	cpi	60h 
+  01A1'   DA 01A8'              	jc	@set1 
+  01A4'   E6 1F                 	ani	1fh 
+  01A6'   C6 60                 	adi	60h 
+  01A8'                         @set1:	cont	CrRom1 
+  01A8'   77              +     	mov	m,a 
+  01A9'   C3 019B'        +     	jmp	CrRom1 
+                                 
+                                 
+	MACRO-80 3.44	09-Dec-81	PAGE	1-6
+
+
+  01AC'                         GetRomCode: 
+  01AC'   4F                    	mov	c,a 
+  01AD'   E6 04                 	ani	0100b 
+  01AF'   C2 01C7'              	jnz	Rom3 
+  01B2'   79                    	mov	a,c 
+  01B3'   E6 01                 	ani	0001b 
+  01B5'   C2 01C4'              	jnz	Rom1 
+  01B8'   79                    	mov	a,c 
+  01B9'   E6 08                 	ani	1000b 
+  01BB'   C2 01C1'              	jnz	Rom4 
+  01BE'   3E 81                 Rom2:	mvi	a,81h	; Latin table 
+  01C0'   C9                    	ret 
+  01C1'   3E 85                 Rom4:	mvi	a,85h	; Russian table 
+  01C3'   C9                    	ret 
+  01C4'   3E 80                 Rom1:	mvi	a,80h	; Original RK ROM 
+  01C6'   C9                    	ret 
+  01C7'   3E 84                 Rom3:	mvi	a,84h	; Extended RK table 
+  01C9'   C9                    	ret 
+                                 
+                                ;	.	.	.	.	.	. 
+                                 
+  01CA'   FE 20                 CharSet:cpi	20h	; Space 
+  01CC'   06 0F                  	mvi	b,1111b 
+  01CE'   C8                     	rz 
+  01CF'   E5                     	push	h 
+  01D0'   C5                     	push	b 
+  01D1'   07                     	rlc 
+  01D2'   07                     	rlc 
+  01D3'   07                     	rlc 
+  01D4'   E6 07                  	ani	111b 
+  01D6'   21 01E1'               	lxi	h,SetTable 
+  01D9'   06 00                 	mvi	b,0 
+  01DB'   4F                    	mov	c,a 
+  01DC'   09                    	dad	b 
+  01DD'   C1                    	pop	b 
+  01DE'   46                    	mov	b,m 
+  01DF'   E1                    	pop	h 
+  01E0'   C9                    	ret 
+                                 
+  01E1'                         SetTable: 
+  01E1'   0D                    	db	1101b	; RK special symbols 
+  01E2'   0D                    	db	1101b	; Digits and special symbols 
+  01E3'   05                    	db	0101b	; Big latin letters 
+  01E4'   06                    	db	0110b	; Small latin letters 
+  01E5'   02                    	db	0010b	; IBM PC graphic symbols 
+  01E6'   02                    	db	0010b	;  --""- 
+  01E7'   0A                    	db	1010b	; Small russian letters 
+  01E8'   09                    	db	1001b	; Big russian letters 
+                                 
+                                ;	.	.	.	.	.	. 
+                                ; Transcode symbol from alt code to KOI8 
+  01E9'                         TransSym: 
+  01E9'   FE 80                 	cpi	80h 
+  01EB'   D8                    	rc 
+  01EC'   C5                    	push	b 
+  01ED'   D6 80                 	SUI	80H 
+	MACRO-80 3.44	09-Dec-81	PAGE	1-7
+
+
+  01EF'   0E 80                 	MVI	C,128 
+  01F1'   FE 20                 	CPI	20H 
+  01F3'   DA 020B'              	JC	RUS 
+  01F6'   0E 60                 	MVI	C,128-20H 
+  01F8'   D6 20                 	SUI	20H 
+  01FA'   FE 10                 	CPI	10H 
+  01FC'   DA 020B'              	JC	RUS 
+  01FF'   FE 40                 	cpi	40h 
+  0201'   DA 021E'              	JC	Trns01 
+  0204'   D6 30                 	SUI	30H 
+  0206'   FE 20                 	CPI	20H 
+  0208'   D2 021C'              	JNC	Trns02 
+  020B'   E5                    RUS:	PUSH	H 
+  020C'   D5                    	push	d 
+  020D'   21 0222'              	LXI	H,RUSTABL 
+  0210'   5F                    	MOV	E,A 
+  0211'   16 00                 	MVI	D,0 
+  0213'   19                    	DAD	D 
+  0214'   7E                    	MOV	A,M 
+  0215'   81                    	ADD	C 
+  0216'   D1                    	pop	d 
+  0217'   E1                    	POP	H 
+  0218'   C1                    	POP	B 
+  0219'   C3 0221'              	JMP	End_Tr 
+  021C'   C6 20                 Trns02:	adi	20h 
+  021E'   C6 70                 Trns01:	adi	70h 
+  0220'   C1                    	pop	b 
+  0221'   C9                    End_Tr:	ret 
+                                 
+  0222'   61 62 77 67           RUSTABL:DB	'abwgdevzijklmnoprstufhc~{}yx|`q' 
+  0226'   64 65 76 7A           
+  022A'   69 6A 6B 6C           
+  022E'   6D 6E 6F 70           
+  0232'   72 73 74 75           
+  0236'   66 68 63 7E           
+  023A'   7B 7D 7F 79           
+  023E'   78 7C 60 71           
+                                 
+  0242'   21 C001               SETSCR:	LXI	H,@8275+1 
+  0245'   36 00                 	MVI	M,0 
+  0247'   2B                    	DCX	H 
+                                ;	MVI	M,4FH 
+                                ;	MVI	M,1CH 
+                                ;	MVI	M,99H 
+                                ;	MVI	M,09DH 
+  0248'   36 4D                 	MVI	M,4DH 
+  024A'   36 5D                 	MVI	M,5DH 
+  024C'   36 FF                 	MVI	M,0FFH 
+  024E'   36 18                 	MVI	M,18H 
+  0250'   23                    	INX	H 
+  0251'   36 27                 	MVI	M,27H 
+                                 
+  0253'   21 C001               SetDma:	lxi	h,@8275+1 
+  0256'   7E                    	MOV	A,M 
+  0257'   7E                    	MOV	A,M 
+  0258'   E6 20                 	ANI	20H 
+	MACRO-80 3.44	09-Dec-81	PAGE	1-8
+
+
+  025A'   CA 0257'              	JZ	$-3 
+  025D'   21 E008               	LXI	H,@8257+8 
+  0260'   36 80                 	MVI	M,80H 
+  0262'   2E 04                 	MVI	L,low(@8257)+4 
+  0264'   EB                    	xchg 
+  0265'   2A 0000"              	lhld	ScrAdr 
+  0268'   EB                    	xchg 
+  0269'   73                    	mov	m,e 
+  026A'   72                    	mov	m,d 
+  026B'   23                    	INX	H 
+  026C'   EB                    	xchg 
+  026D'   2A 0004"              	lhld	RomCounter 
+                                ;	lxi	b,490fh 
+  0270'   01 4923               	lxi	b,4923h 
+  0273'   09                    	dad	b 
+  0274'   EB                    	xchg 
+  0275'   73                    	mov	m,e 
+  0276'   72                    	mov	m,d 
+  0277'   2E 08                 	MVI	L,low(@8257)+8 
+  0279'   36 A4                 	MVI	M,0a4h 
+  027B'   C9                    	RET 
+                                 
+  027C'                         	dseg 
+  0000"                         ScrAdr:		ds	2 
+  0002"                         AltScr:		ds	2 
+  0004"                         RomCounter:	ds	2 
+  0006"                         RomSet:		ds	1 
+  0007"                         CurStr:		ds	1 
+                                	end 
+	MACRO-80 3.44	09-Dec-81	PAGE	S
+
+
+Macros:
+CHECK           CONT            TRNSSYM         
+
+Symbols:
+0114*	?CDEHL          0088'	_CLREND         010E'	_ENDBUFF        
+0137'	_ENDCHAIN       0106'	_ENDRAM         00EA'	_ENDSTR         
+00F6'	_NXTSTR         00EF'	_SETEND         0129'	_SETTAB         
+0124'	_TAB            0184'	@21             0178'	@22             
+0193'	@23             E000 	@8257           C000 	@8275           
+0028'	@INIT0          CE00 	@PALM_CTR       01A8'	@SET1           
+0197'	@SET2           015F'	@SET4           0002"	ALTSCR          
+0000*	BUFFDELIM       0110*	BUFFEND         01CA'	CHARSET         
+0035'	CHGSCRADR       004A'	CLRLP           0044'	CLRSCR          
+019B'	CRROM1          016B'	CRROM2          0163'	CRROM3          
+0152'	CRROM4          0007"	CURSTR          0000I'	DISPINIT        
+0054I'	DISPLYSCR       005D'	DSPLSCR         0221'	END_TR          
+0090'	FIRSTPASS       01AC'	GETROMCODE      0072'	LOOP            
+0096'	NEXTSYM         0000*	RAMDELIM        0108*	RAM_START       
+011E*	RDATEND         01C4'	ROM1            01BE'	ROM2            
+01C7'	ROM3            01C1'	ROM4            0004"	ROMCOUNTER      
+0006"	ROMSET          020B'	RUS             0222'	RUSTABL         
+000C*	SCR1            0012*	SCR2            0000"	SCRADR          
+0018 	SCRHEIGHT       004E 	SCRWIDTH        013C'	SECONDPASS      
+0253'	SETDMA          0242'	SETSCR          00C8'	SETSYM          
+01E1'	SETTABLE        00C6'	STSYM           01E9'	TRANSSYM        
+00CB*	TRANSTBL        021E'	TRNS01          021C'	TRNS02          
+
+
+
+No Fatal error(s)
+
+
+    
+01C7'	ROM3            01C1'	ROM4            0004"	ROMCOUNTER      
+0006"	ROMSET          020B'	RUS             0
