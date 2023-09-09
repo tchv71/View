@@ -366,7 +366,7 @@ CharSet:cpi	20h	; Space
 	ret
 
 SetTable:
-IF	0
+IF	1
 	db	1101b	; RK special symbols
 	db	1101b	; Digits and special symbols
 	db	0101b	; Big latin letters
@@ -376,14 +376,15 @@ IF	0
 	db	1010b	; Small russian letters
 	db	1001b	; Big russian letters
 ELSE
-	db	1101b	; RK special symbols
-	db	1101b	; Digits and special symbols
-	db	0101b	; Big latin letters
-	db	0110b	; Small latin letters
-	db	0010b	; IBM PC graphic symbols
-	db	0010b	;  --""-
-	db	1010b	; Small russian letters
-	db	1001b	; Big russian letters
+; Use only two last fonts
+	db	1100b	; RK special symbols
+	db	1100b	; Digits and special symbols
+	db	0100b	; Big latin letters
+	db	0100b	; Small latin letters
+	db	0000b	; IBM PC graphic symbols
+	db	0000b	;  --""-
+	db	1000b	; Small russian letters
+	db	1000b	; Big russian letters
 ENDIF
 
 ;	.	.	.	.	.	.
