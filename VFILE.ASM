@@ -35,8 +35,8 @@ PALM_CTR_ADR::	DW 0CE00h	; Palmira Control Byte
 	public	RamDelim,BuffDelim
 	public	RdAtEnd
 
-RamDelim  equ	81H
-BuffDelim equ	82H
+RamDelim  equ	1
+BuffDelim equ	2
 
 RamSize	equ	4000h
 
@@ -94,7 +94,7 @@ nxt:	lhld	DispldText
 	call	DisplyScr
 	call	BIOS_CONIN
 	cpi	3
-	jz	ext
+	jz	_exit
 	mov	b,a
 	;lda	@8255_1+2
 	push	h
@@ -153,8 +153,8 @@ Page:	cpi	19h
 
 StrDn:	call	_StrDn
 	jmp	nxt
-ext:	call	0f82dh
-	jmp	0
+
+_exit:	jmp	0
 
 StrUp:	call	_StrUp
 	jmp	nxt
@@ -192,7 +192,17 @@ SymBack:dcx	h
 	cpi	RamDelim
 	jz	@sbck
 	cpi	BuffDelim
-        rnz
+	rnz
+	push	h
+	xchg
+	lhld	BuffStart
+	dcx	h
+	call	?cdehl
+	;inx	d
+	mvi	a,20h
+	pop	h
+	rnz
+
 	call	RdAtStart
 	mov	a,m
 	rnc
