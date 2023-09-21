@@ -62,7 +62,7 @@ DispInit:
 	mov	a,h
 	ora	l
 	jz	DispI01
-	mvi	a,80h
+	mvi	a,80h+10h
 	call	_out
 DispI01:
 	lxi	h,0
@@ -335,13 +335,13 @@ GetRomCode:
 	mov	a,c
 	ani	1000b
 	jnz	Rom4
-Rom2:	mvi	a,81h	; Latin table
+Rom2:	mvi	a,81h	; Extended RK table
 	ret
 Rom4:	mvi	a,85h	; Russian table
 	ret
 Rom1:	mvi	a,80h	; Original RK ROM
 	ret
-Rom3:	mvi	a,84h	; Extended RK table
+Rom3:	mvi	a,84h	; Latin table
 	ret
 
 ;****************************************************
