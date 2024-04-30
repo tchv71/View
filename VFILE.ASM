@@ -6,16 +6,16 @@
 PageSize	equ	23
 ;@8255_1		equ	0f782h
 ;@8255_1		equ	0C200h
-extrn	_in, _out
+;extrn	_in, _out
 
 	dseg
-VRAM_ADR::	DW 0B770h	; VRAM buffer visible start address - 0B7C2h
-PPI_ADR::	DW 0C200h 	; VV55 keyboard Controller - 0C200h
-PPI2_ADR::	DW 0C400h	; VV55 additional PPI  - 0C400h
-DISP_ADR::	DW 0C000h	; VG75 Display Controller - 0C000h
-DMA_ADR::	DW 0E000h	; VT57 DMA Controller - 0E000h
+VRAM_ADR:	DW 0B770h	; VRAM buffer visible start address - 0B7C2h
+PPI_ADR:	DW 0C200h 	; VV55 keyboard Controller - 0C200h
+PPI2_ADR:	DW 0C400h	; VV55 additional PPI  - 0C400h
+DISP_ADR:	DW 0C000h	; VG75 Display Controller - 0C000h
+DMA_ADR:	DW 0E000h	; VT57 DMA Controller - 0E000h
 
-PALM_CTR_ADR::	DW 0CE00h	; Palmira Control Byte
+PALM_CTR_ADR:	DW 0CE00h	; Palmira Control Byte
 		DW 0,0,0	; Reserved for future use
 	cseg
 
@@ -32,8 +32,8 @@ PALM_CTR_ADR::	DW 0CE00h	; Palmira Control Byte
 @setdma	 equ	1ah
 @randrd	 equ	21h
 
-	public	RamDelim,BuffDelim
-	public	RdAtEnd
+	;public	RamDelim,BuffDelim
+	;public	RdAtEnd
 
 RamDelim  equ	1
 BuffDelim equ	2
@@ -48,15 +48,17 @@ syscall	macro	call_number
 	pop	d
 	endm
 
-extrn	DispInit	; Initialise displaying of a text
-extrn	DisplyScr	; Display a screen from HL position
+;extrn	DispInit	; Initialise displaying of a text
+;extrn	DisplyScr	; Display a screen from HL position
 
-extrn	RamStart	; External label - start of
+;extrn	RamStart	; External label - start of
 			; unused ram
 
-public	Ram_Start
+;public	Ram_Start
 
 Strt:
+	lxi	sp,100h
+
 	lxi	d,VRAM_ADR
 	call	BIOS_CONFIG	; Configure ports
 
@@ -93,8 +95,22 @@ Strt:
 nxt:	lhld	DispldText
 	call	DisplyScr
 	call	BIOS_CONIN
-	cpi	3
+	cpi	3 ; ^C
 	jz	_exit
+
+	cpi	0
+	jnz	nxt01
+	lda	PalmCtrByte
+	cpi	90H
+	jnz	nxt02
+	mvi	a,80h
+	jmp	nxt03
+nxt02:	mvi	a,90h
+nxt03:	sta	PalmCtrByte
+	call	SetPalmCtr
+	jmp	nxt
+
+nxt01:
 	mov	b,a
 	;lda	@8255_1+2
 	push	h
@@ -233,7 +249,7 @@ ChgLp:	mov	a,m
 	inx	h
 	ret
 
-?cdehl::
+?cdehl:
 	mov	a,d
 	cmp	h
 	rnz
@@ -334,6 +350,19 @@ opn_f:	syscall	@open
 
 RdIntoBuff:
 	lhld	BuffStart
+IF 0
+	lxi	d,TestBuff
+lp001:	ldax	d
+	ora	a
+	rz
+	mov	m,a
+	inx	d
+	inx	h
+	jmp	lp001
+
+TestBuff:
+	db	'Test1',0dh,0ah,'Test2',1AH,0
+ENDIF
 @rdbuf:
 	xchg
 	syscall	@setdma
@@ -346,7 +375,7 @@ RdIntoBuff:
 	inx	h
 	shld	EndRec
 	pop	h
-        ora	a
+	ora	a
 	jnz	_Eof
 	xchg
 	lhld	RamEnd
@@ -438,8 +467,9 @@ Ram_Start:	ds	2
 DispldText:	ds	2
 RamEnd:		ds	2
 BuffStart:	ds	2
-BuffEnd::	ds	2
+BuffEnd:	ds	2
 RecSize:	ds	2
 StartRec:	ds	2
 EndRec:		ds	2
-	end	strt
+PalmCtrByte:	ds	1
+;	end	strt

@@ -6,32 +6,33 @@
 
 ;	16-Feb-1992 - change Ram_Start to be variable
 
-;ScrWidth	equ	80
-;ScrHeight	equ	24
-ScrWidth	equ	78
+ScrWidth	equ	80
 ScrHeight	equ	24
+;ScrWidth	equ	78
+;ScrHeight	equ	24
 ;@8275		equ	0f7c0h
 ;@8257		equ	0f7e0h
 ;@8275		equ	0C000h
 ;@8257		equ	0E000h
 ;@PALM_CTR	equ	0CE00h
 
+	cseg
 
 ; Global routines (see apropriate def. for more info)
-	public	DispInit	; Initialise displaying
- 	public	DisplyScr	; Display a screen of text
+	;public	DispInit	; Initialise displaying
+	;public	DisplyScr	; Display a screen of text
 
 ; External adresses
-	extrn	Scr1,Scr2,TransTbl
+	;extrn	Scr1,Scr2,TransTbl
 ; External variable
-	extrn	Ram_Start
+	;extrn	Ram_Start
 ; Text delimiters
-	extrn	RamDelim
-	extrn	BuffDelim
+	;extrn	RamDelim
+	;extrn	BuffDelim
 ; External routines
-	extrn	RdAtEnd	; Read next portion at and of
+	;extrn	RdAtEnd	; Read next portion at and of
 			; ram buffer
-_in::	INR	H
+_in:	INR	H
 	DCR	H
 	JZ	_in_port
 	MOV	A,M
@@ -42,7 +43,7 @@ _in_port:
 	IN	0
 	RET
 
-_out::	INR	H
+_out:	INR	H
 	DCR	H
 	jz	_out_port
 	MOV	M,A
@@ -55,16 +56,22 @@ _out_port:
 	OUT	0
 	RET
 
-; Note: this routine should be called once at start of program
-DispInit:
-	;sta	@PALM_CTR
-	LHLD	PALM_CTR_ADR##
+SetPalmCtr:
+	mov	c,a
+	LHLD	PALM_CTR_ADR
 	mov	a,h
 	ora	l
-	jz	DispI01
+	rz
+	mov	a,c
+	jmp	_out
+
+
+; Note: this routine should be called once at start of program
+DispInit:
 	mvi	a,80h+10h
-	call	_out
-DispI01:
+	sta	PalmCtrByte
+	call	SetPalmCtr
+
 	lxi	h,0
 	shld	RomCounter
 	lxi	h,Scr1
@@ -79,6 +86,10 @@ DispI01:
 	mvi	c,0
 @init0:	mov	a,c
 	;call	TransSym
+	cpi	0bah
+	jnz	@init1
+	mvi	a,'-'
+@init1:
 	mov	m,a
 	inx	h
 	call	CharSet
@@ -230,9 +241,9 @@ _EndRam:xchg
 
 _EndBuff:
 	push	h
-	lhld	BuffEnd##
+	lhld	BuffEnd
 	dcx	d
-	call	?cdehl##
+	call	?cdehl
 	inx	d
 	mvi	a,BuffDelim
 	pop	h
@@ -366,7 +377,18 @@ CharSet:cpi	20h	; Space
 ; Table of symbol's 3 high order bits to font number
 ; Bits in record corresponds fonts 3210
 SetTable:
-IF	1
+IF	0
+ IF	1
+; Apogee symbols in font 1 - don't use it
+	db	1101b	; RK special symbols
+	db	1101b	; Digits and special symbols
+	db	0101b	; Big latin letters
+	db	0100b	; Small latin letters
+	db	0000b	; IBM PC graphic symbols
+	db	0000b	;  --""-
+	db	1000b	; Small russian letters
+	db	1001b	; Big russian letters
+ ELSE
 	db	1101b	; RK special symbols
 	db	1101b	; Digits and special symbols
 	db	0101b	; Big latin letters
@@ -375,6 +397,7 @@ IF	1
 	db	0010b	;  --""-
 	db	1010b	; Small russian letters
 	db	1001b	; Big russian letters
+ ENDIF
 ELSE
 ; Use only two last fonts
 	db	1100b	; RK special symbols
@@ -432,7 +455,7 @@ _@out	macro	val
 
 ;****************************************************
 SETSCR:
-	lhld	DISP_ADR##
+	lhld	DISP_ADR
 	inx	h
 	xra	a
 	call	_out
@@ -443,25 +466,32 @@ SETSCR:
 ;	MVI	M,99H
 ;	MVI	M,09DH
 
-	_@out	4DH
+	_@out	4FH
 	_@out	5DH
 	_@out	0FFH
-	_@out	18H
+	_@out	19H
 	INX	H
 	_@out	27H
 
 SetDma:
-	lhld	DISP_ADR##
+	lhld	DISP_ADR
 	inx	h
 	call	_in
 WtRvv:
 	call	_in
 	ANI	20H
 	JZ	WtRvv
-
-	LHLD	DMA_ADR##
-	lxi	b,8
+	
+	LHLD	DMA_ADR
+	lxi	b,0fh
 	dad	b
+	call	_in
+	inr	a
+	jz	VT37
+
+	mov	a,l
+	sui	7
+	mov	l,a
 
 	_@out	80H
 
@@ -475,11 +505,12 @@ WtRvv:
 	call	_out
 	mov	a,d
 	call	_out
-	INX	H
+	inx	h
 	xchg
 	lhld	RomCounter
 ;	lxi	b,490fh
-	lxi	b,4923h
+;	lxi	b,4923h
+	lxi	b,495fh
 	dad	b
 	xchg
 	mov	a,e
@@ -489,9 +520,50 @@ WtRvv:
 	inx	h
 	inx	h
 	inx	h
-	;MVI	L,low(@8257)+8
-	MVI	a,0a4h
+	;mvi	l,low(@8257)+8
+	mvi	a,0a4h
 	jmp	_out
+VT37:
+	xra	a
+	dcx	h
+	dcx	h
+	call	_out	; dma+0dh
+	mov	a,l
+	sui	9
+	mov	l,a
+	xchg
+	lhld	ScrAdr
+	xchg
+	mov	a,e
+	call	_out
+	mov	a,d
+	call	_out
+	inx	h
+	xchg
+	lhld	RomCounter
+;	lxi	b,490fh
+	lxi	b,095fh;0923h
+	dad	b
+	xchg
+	mov	a,e
+	call	_out
+	mov	a,d
+	call	_out
+	mov	a,l
+	adi	6
+	mov	l,a
+	mvi	a,1ah
+	call	_out	; dma+0bh
+	mov	a,l
+	sui	3
+	mov	l,a
+	_@out	8
+	mov	a,l
+	adi	4+3
+	mov	l,a
+	mvi	a,0bh
+	call	_out	; dma+0fh
+	ret
 
 	dseg
 ScrAdr:		ds	2
@@ -499,4 +571,4 @@ AltScr:		ds	2
 RomCounter:	ds	2
 RomSet:		ds	1
 CurStr:		ds	1
-	end
+;	end

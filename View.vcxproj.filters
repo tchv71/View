@@ -27,5 +27,8 @@
     <None Include="Makefile">
       <Filter>Source Files</Filter>
     </None>
+    <None Include="View.asm">
+      <Filter>Source Files</Filter>
+    </None>
   </ItemGroup>
 </Project>

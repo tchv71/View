@@ -4,7 +4,7 @@
 ;********************************************************
 
 malloc	macro	label,size
-	public	label
+	;public	label
 label	equ	ptr
 ptr	set	ptr+size
 	endm
@@ -13,9 +13,9 @@ ptr	set	ptr+size
 	dseg
 ptr	set	$
 
-	malloc	Scr1,1000h	; Screen buffers
-	malloc	Scr2,1000h
+	malloc	Scr1,1100h	; Screen buffers
+	malloc	Scr2,1100h
 	malloc	TransTbl,512+1	; Transcode Table + RamDelim
 	malloc	RamStart,0
 
-	end
+;	end
