@@ -8,15 +8,6 @@ PageSize	equ	23
 ;@8255_1		equ	0C200h
 ;extrn	_in, _out
 
-	dseg
-VRAM_ADR:	DW 0B770h	; VRAM buffer visible start address - 0B7C2h
-PPI_ADR:	DW 0C200h 	; VV55 keyboard Controller - 0C200h
-PPI2_ADR:	DW 0C400h	; VV55 additional PPI  - 0C400h
-DISP_ADR:	DW 0C000h	; VG75 Display Controller - 0C000h
-DMA_ADR:	DW 0E000h	; VT57 DMA Controller - 0E000h
-
-PALM_CTR_ADR:	DW 0CE00h	; Palmira Control Byte
-		DW 0,0,0	; Reserved for future use
 	cseg
 
 
@@ -62,6 +53,8 @@ Strt:
 	lxi	d,VRAM_ADR
 	call	BIOS_CONFIG	; Configure ports
 
+	call	SaveScreen
+
 	lxi	h,RamStart
 	shld	Ram_Start
 	call	OpenFil	; Open file, set RecSize
@@ -97,7 +90,10 @@ nxt:	lhld	DispldText
 	call	BIOS_CONIN
 	cpi	3 ; ^C
 	jz	_exit
-
+	cpi	27
+	jz	_exit
+	cpi	'4'
+	jz	_disp_hex
 	cpi	0
 	jnz	nxt01
 	lda	PalmCtrByte
@@ -170,7 +166,20 @@ Page:	cpi	19h
 StrDn:	call	_StrDn
 	jmp	nxt
 
-_exit:	jmp	0
+_disp_hex:
+	lda	DispHex
+	xri	1
+	sta	DispHex
+	jmp	nxt
+
+_exit:
+	lxi	b,8150h ; Unset increment by one
+	mov	a,c
+	out	VDP+1
+	mov	a,b
+	out	vdp+1
+	call	RestoreScreen
+	jmp	0
 
 StrUp:	call	_StrUp
 	jmp	nxt
@@ -189,7 +198,11 @@ PgDn:	mvi	b,PageSize
 	jnz	$-4
 	jmp	nxt
 
-_StrUp:	lhld	DispldText
+_StrUp:
+	lhld	DispldText
+	lda	DispHex
+	ora	a
+	jnz	_StrUpHex
 	call	SymBack
 	cpi	BuffDelim
 	jz	@StrU0
@@ -201,6 +214,16 @@ _StrUp:	lhld	DispldText
 @StrU0:	inx	h
 	shld	DispldText
 	ret
+
+_StrUpHex:
+	call	SymBack
+	cpi	BuffDelim
+	jz	@StrU0
+	push	b
+	lxi	b, -16
+	dad	b
+	pop	b
+	jmp	@StrU0
 
 @sbck:	lhld	RamEnd
 SymBack:dcx	h
@@ -226,6 +249,9 @@ SymBack:dcx	h
 	ret
 
 _StrDn:	lhld	DispldText
+	lda	DispHex
+	ora	a
+	jnz	_StrDnHex
 ChgLp:	mov	a,m
 	cpi	1ah
 	inx	h
@@ -236,9 +262,29 @@ ChgLp:	mov	a,m
 	jmp	ChgLp
 @strd0:	cpi	0ah
 	jnz	ChgLp
+@strd1:
 	shld	DispldText
 	ret
 
+_StrDnHex:
+	push	b
+	lxi	b,16
+	dad	b
+	pop	b
+	xchg
+	lhld	RamEnd
+	xchg
+	call	?cdehl
+	jnz	@strd2
+	lxi	h,RamStart
+	jmp	@strd1
+@strd2:
+	xchg
+	lhld	FileEnd
+	xchg
+	call	?cdehl
+	rz
+	jmp	@strd1
 ;----------------------------------------------
 ?neghl:	mov	a,h
 	cma
@@ -384,7 +430,9 @@ ENDIF
 	jnz	@rdbuf
 	ret
 
-_Eof:	ret
+_Eof:
+	shld	FileEnd
+	ret
 
 ; Read at end of ram buffer
 RdAtEnd:push	h
@@ -406,7 +454,7 @@ RdAtEnd:push	h
 	shld	StartRec
 
 	lxi	d,fcb
-        syscall	@randrd
+	syscall	@randrd
 
 	pop	b
 	pop	d
@@ -456,16 +504,26 @@ askfn:	call	prnt
 	xchg
 	ret
 
+;------------------------------------
 strbuff:db	14,0
 	ds	15
+TheEnd:
+	dseg
+VRAM_ADR:	DW 0B770h	; VRAM buffer visible start address - 0B7C2h
+PPI_ADR:	DW 0C200h 	; VV55 keyboard Controller - 0C200h
+PPI2_ADR:	DW 0C400h	; VV55 additional PPI  - 0C400h
+DISP_ADR:	DW 0C000h	; VG75 Display Controller - 0C000h
+DMA_ADR:	DW 0E000h	; VT57 DMA Controller - 0E000h
+
+PALM_CTR_ADR:	DW 0CE00h	; Palmira Control Byte
+		DW 0,0,0	; Reserved for future use
+	;dseg
 
 fcb:	ds	25h
-;------------------------------------
-
-	dseg
 Ram_Start:	ds	2
 DispldText:	ds	2
 RamEnd:		ds	2
+FileEnd:	ds	2
 BuffStart:	ds	2
 BuffEnd:	ds	2
 RecSize:	ds	2

@@ -20,7 +20,8 @@ View.REL: View.ASM $(ASMS)
 	../m80noi/x64/Release/m80noi.exe VIEW.PRN
 
 View.COM: VIEW.REL
-	$(M80PATH)/L80 /P:103/D:900,VIEW,MYLIB/S,$@/Y/N/E/U
+	$(M80PATH)/L80 /P:103/d:1000,VIEW,MYLIB/S,$@/Y/N/E/U
+	../m80noi/x64/Release/m80noi.exe view.prn
 
 send: View.rkl
 	MODE $(PORT): baud=115200 parity=N data=8 stop=1

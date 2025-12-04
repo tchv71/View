@@ -7,15 +7,11 @@
 ;	16-Feb-1992 - change Ram_Start to be variable
 
 ScrWidth	equ	80
+IFNDEF	MSX
 ScrHeight	equ	24
-;ScrWidth	equ	78
-;ScrHeight	equ	24
-;@8275		equ	0f7c0h
-;@8257		equ	0f7e0h
-;@8275		equ	0C000h
-;@8257		equ	0E000h
-;@PALM_CTR	equ	0CE00h
-
+ELSE
+ScrHeight	equ	30
+ENDIF
 	cseg
 
 ; Global routines (see apropriate def. for more info)
@@ -74,14 +70,18 @@ DispInit:
 
 	lxi	h,0
 	shld	RomCounter
+IFNDEF	MSX
 	lxi	h,Scr1
-	shld	ScrAdr
+	shld	ScrAddr
 	lxi	h,Scr2
 	shld	AltScr
 	call	ClrScr
-	call	ChgScrAdr
+	call	ChgScrAddr
 	call	ClrScr
 	call	SetScr
+ELSE
+	call	ClrScr
+ENDIF
 	lxi	h,TransTbl
 	mvi	c,0
 @init0:	mov	a,c
@@ -99,18 +99,37 @@ DispInit:
 	jnz	@init0
 	ret
 
-ChgScrAdr:
-	lhld	ScrAdr
+ChgScrAddr:
+	lhld	ScrAddr
 	xchg
 	lhld	AltScr
-	shld	ScrAdr
+	shld	ScrAddr
 	xchg
 	shld	AltScr
 	ret
 
 
-
-ClrScr:	lhld	ScrAdr
+IFDEF	MSX
+ClrScr:	lxi	h,0
+	;call	ClrScr2
+ClrScr2:
+	mov	a,l
+	out	VDP+1
+	mov	a,h
+	ori	40h
+	out	vdp+1
+	lxi	b,ScrWidth*ScrHeight
+ClrLp:	xra	a
+	out	VDP
+	mvi	a,4fh
+	out	VDP
+	dcx	b
+	mov	a,b
+	ora	c
+	jnz	ClrLp
+	ret
+ELSE
+ClrScr:	lhld	ScrAddr
 	lxi	b,1000h
 ClrLp:	mvi	m,0
 	inx	h
@@ -119,13 +138,75 @@ ClrLp:	mvi	m,0
 	ora	c
 	jnz	ClrLp
 	ret
-
+ENDIF
 ;	.	.	.	.	.	.	.
 ; Display the screen from HL - pointer to the text
 DisplyScr:
+IFDEF	MSX
+	xra	a
+	out	VDP+1
+	ori	40h
+	out	VDP+1
+	lxi	b,8154h ; Set increment by one
+	mov	a,c
+	out	VDP+1
+	mov	a,b
+	out	vdp+1
+	jmp	DsplScr
+SaveScreen:
+	lxi	h,Scr1
+	LXI	D, 0F759h
+	LXi	B, ScrWidth * ScrHeight * 2
+	xra	a
+	out	VDP+1
+	out	VDP+1
+SS01:
+	IN	VDP
+	mov	m,a
+	inx	h
+	dcx	b
+	mov	a,b
+	ora	c
+	jnz	SS01
+	mvi	c, 13
+ss02:
+	ldax	d
+	inx	d
+	mov	m,a
+	inx	h
+	dcr	c
+	jnz	ss02
+	ret
+RestoreScreen:
+	lxi	h,Scr1
+	LXI	D, 0F759h
+	LXi	B, ScrWidth * ScrHeight * 2
+	xra	a
+	out	VDP+1
+	ori	40h
+	out	VDP+1
+rs01:
+	mov	a,m
+	inx	h
+	out	VDP
+	dcx	b
+	mov	a,b
+	ora	c
+	jnz	rs01
+	mvi	c, 13
+rs02:
+	mov	a, m
+	inx	h
+	stax	d
+	inx	d
+	dcr	c
+	jnz	rs02
+	ret
+ELSE
 	call	DsplScr
 	call	SetDma
-	jmp	ChgScrAdr
+	jmp	ChgScrAddr
+ENDIF
 
 ; Variables and registers:
 ;	hl - screen pointer
@@ -133,11 +214,11 @@ DisplyScr:
 ;	b - symbols to end of line
 ;	c - not used (globally)
 ;	RomSet - ROM set for current chain
-;       CurStr - lines to end of screen
+;	CurStr - lines to end of screen
 DsplScr:xchg
 	lxi	h,0
 	shld	RomCounter
-	lhld	ScrAdr
+	lhld	ScrAddr
 	lxi	b,3*ScrWidth
 	dad	b
 	mvi	a,ScrHeight
@@ -153,11 +234,13 @@ loop:	push	h
 	call	SecondPass
 	pop	psw
 	jnc	loop
+IFNDEF	MSX
 	mvi	b,2*ScrWidth
 _ClrEnd:mvi	m,0
 	inx	h
 	dcr	b
 	jnz	_ClrEnd
+ENDIF
 	ret
 
 ; The first pass - Transcode symbol's
@@ -180,9 +263,173 @@ TrnsSym	macro
 	endm
 
 FirstPass:
+IFNDEF	MSX
 	inx	h	; Reserve space for ROM selection byte
 	mvi	a,0fh
 	sta	RomSet	; Initial set of ROMs for this chain
+ENDIF
+	lda	DispHex
+	ora	a
+	jz	NextSym
+
+	mvi	b, ScrHeight
+	lxi	h,4000h
+	mov	a,l
+	out	VDP+1
+	mov	a,h
+	out	VDP+1
+dh_s:
+	push	d
+	mvi	c,16
+	lhld	BuffStart
+	call	SubDE_HL
+	jnc	dh00
+
+	lhld	BuffEnd
+	xchg
+	lhld	Ram_Start
+	call	SubDE_HL
+
+	lhld	RamEnd
+	mov	a, l
+	add	l
+	mov	e, a
+	mov	a, h
+	adc	d
+	mov	d, a
+
+	lhld	BuffStart
+	call	SubDE_HL
+dh00:
+	lhld	StartRec
+	mov	a,l
+	rlc
+	ani	128
+	add	e
+	mov	e,a
+	jnc	$+4
+	inr	d
+	mov	a,l
+	rrc
+	ani	7fh
+	adc	d
+	mov	d,a
+	mov	a,h
+	rrc
+	lxi	h,StrBuf
+	call	ByteHexToBuf
+	mov	a,d
+	call	ByteHexToBuf
+	mov	a,e
+	call	ByteHexToBuf
+	mvi	m, 0
+	inx	h
+	pop	d
+	push	d
+dh01:	ldax	d
+	inx	d
+	call	ByteHexToBuf
+	mvi	m, 0
+	inx	h
+	dcr	c
+	jnz	dh01
+	pop	d
+	mvi	c,16
+dh02:	ldax	d
+	inx	d
+	cpi	20h
+	jnc	$+5
+	mvi	a, '.'
+	mov	m, a
+	inx	h
+	dcr	c
+	jnz	dh02
+
+	push	d
+	mvi	c,71
+	xchg
+	lhld	ScrAddr
+	xchg
+	lxi	d, StrBuf
+dh03:	ldax	d
+	inx	d
+	out	VDP
+	dcr	c
+	jnz	dh03
+	mvi	c,9
+	call	ClrLine
+	pop	d
+	ldax	d
+	cpi	RamDelim
+	jnz	dh04
+	xchg
+	lhld	Ram_Start
+	xchg
+dh04:
+	cpi	BuffDelim
+	jnz	dh05 ; Read next record of file
+	call	_eb01
+dh05:
+	lhld	FileEnd
+	call	?cdehl
+	jz	dh06
+IF 0
+	push	b
+	lhld	ScrAddr
+	lxi	b, ScrWidth
+	dad	b
+	pop	b
+	shld	ScrAddr
+ENDIF
+	dcr	b
+	jnz	dh_s
+	stc
+	ret
+
+dh06:	mvi	c,ScrWidth
+	call	ClrLine
+	dcr	b
+	jnz	dh06
+	stc
+	ret
+
+ClrLine:
+	xra	a
+dh07:
+	out	VDP
+	dcr	c
+	jnz	dh07
+	ret
+
+ByteHexToBuf:
+	push	psw
+	rrc
+	rrc
+	rrc
+	rrc
+	call	bhtb_dig
+	pop	psw
+bhtb_dig:
+	ani	0Fh
+	cpi	10
+	jc	bhtb01
+	adi	7
+bhtb01:
+	adi	'0'
+	mov	m, a
+	inx	h
+	ret
+
+SubDE_HL:
+	mov	a, e
+	sub	l
+	mov	e, a
+	mov	a, d
+	sbb	h
+	mov	d, a
+	ret
+
+	
 NextSym:ldax	d
 	inx	d
 	cpi	20h
@@ -199,19 +446,32 @@ NextSym:ldax	d
 	jz	_EndBuff ; Read next record of file
 	cpi	1ah
 	jnz	StSym
+IFNDEF	MSX
 	mvi	m,20h
+ELSE
+	mvi	a, 20h
+	OUT	VDP
+	;mvi	a, 4fh
+	;out	VDP
+ENDIF
 	inx	h
 	dcx	d
 	dcr	b
 	jz	_NxtStr
 	jmp	NextSym
 StSym:	mvi	a,20h	; Other CNTRL symbols are not displayed
-SetSym:	TrnsSym	; a = Translated symbol , c=its ROM set
+SetSym:	;TrnsSym	; a = Translated symbol , c=its ROM set
+IFNDEF	MSX
 	mov	m,a
 	lda	RomSet
 	ana	c
 	jz	_EndChain
 	sta	RomSet
+ELSE
+	OUT	VDP
+	;mvi	a, 4fh
+	;out	VDP
+ENDIF
 	inx	h
 	dcr	b
 	jnz	NextSym
@@ -220,8 +480,16 @@ SetSym:	TrnsSym	; a = Translated symbol , c=its ROM set
 _EndStr:inr	b
 	dcr	b
 	jz	_NxtStr
-_SetEnd:mvi	m,20h	; We can freely fill with space
+_SetEnd:
+IFNDEF	MSX
+	mvi	m,20h	; We can freely fill with space
 	inx	h
+ELSE
+	mvi	a, 20h
+	out	VDP
+	;mvi	a,4fh
+	;out	VDP
+ENDIF
 	dcr	b
 	jnz	_SetEnd
 
@@ -230,7 +498,9 @@ _NxtStr:mvi	b,ScrWidth
 	dcr	a
 	sta	CurStr
 	jnz	NextSym
+IFNDEF	MSX
 	mvi	m,0	; Terminate chain
+ENDIF
 	stc	; The end of screen
 	ret
 
@@ -240,6 +510,11 @@ _EndRam:xchg
 	jmp	NextSym
 
 _EndBuff:
+	call	_eb01
+	jnz	SetSym
+	jmp	NextSym
+
+_eb01:
 	push	h
 	lhld	BuffEnd
 	dcx	d
@@ -247,17 +522,26 @@ _EndBuff:
 	inx	d
 	mvi	a,BuffDelim
 	pop	h
-	jnz	SetSym
+	rnz;jnz	SetSym
 
 	call	RdAtEnd
 	dcx	d
-	jmp	NextSym
+	xra	a
+	ret
 
 _Tab:	mov	a,b
 	dcr	a
   	ani	7
 	inr	a
-_SetTab:mvi	m,20h	;   Space is located in any ROM
+_SetTab:
+IFNDEF	MSX
+	mvi	m,20h	;   Space is located in any ROM
+ELSE
+	mvi	a, 20h
+	OUT	VDP
+	;mvi	a, 4fh
+	;OUT	VDP
+ENDIF
 	inx	h	; and current ROM set are to be
 	dcr	b	; unchanged
 	jz	_NxtStr
@@ -266,8 +550,10 @@ _SetTab:mvi	m,20h	;   Space is located in any ROM
 	jmp	NextSym
 
 _EndChain:
+IFNDEF	MSX
 	mvi	m,0	; Terminate chain
 	dcx	d	; ungetc last symbol
+ENDIF
 	ora	a	; Clear cy - not the end of screen
 	ret
 
@@ -275,6 +561,9 @@ _EndChain:
 ; The second pass - translate intermediate codes
 ;		    into screen codes
 SecondPass:
+IFDEF	MSX
+	ret
+ELSE
 	lda	RomSet
 	call	GetRomCode
 	mov	m,a
@@ -354,6 +643,7 @@ Rom1:	mvi	a,80h	; Original RK ROM
 	ret
 Rom3:	mvi	a,84h	; Latin table
 	ret
+ENDIF
 
 ;****************************************************
 CharSet:cpi	20h	; Space
@@ -409,7 +699,6 @@ ELSE
 	db	1000b	; Small russian letters
 	db	1000b	; Big russian letters
 ENDIF
-
 ;****************************************************
 ; Transcode symbol from alt code to KOI8
 TransSym:
@@ -453,6 +742,7 @@ _@out	macro	val
 	call	_out
 	endm
 
+IFNDEF	MSX
 ;****************************************************
 SETSCR:
 	lhld	DISP_ADR
@@ -499,7 +789,7 @@ WtRvv:
 	sui	4
 	mov	l,a
 	xchg
-	lhld	ScrAdr
+	lhld	ScrAddr
 	xchg
 	mov	a,e
 	call	_out
@@ -528,11 +818,9 @@ VT37:
 	dcx	h
 	dcx	h
 	call	_out	; dma+0dh
-	mov	a,l
-	sui	9
-	mov	l,a
+	mvi	l,4
 	xchg
-	lhld	ScrAdr
+	lhld	ScrAddr
 	xchg
 	mov	a,e
 	call	_out
@@ -549,9 +837,7 @@ VT37:
 	call	_out
 	mov	a,d
 	call	_out
-	mov	a,l
-	adi	6
-	mov	l,a
+	mvi	l,9
 	mvi	a,1ah
 	call	_out	; dma+0bh
 	mov	a,l
@@ -564,11 +850,13 @@ VT37:
 	mvi	a,0bh
 	call	_out	; dma+0fh
 	ret
-
+ENDIF
 	dseg
-ScrAdr:		ds	2
+ScrAddr:		ds	2
 AltScr:		ds	2
 RomCounter:	ds	2
 RomSet:		ds	1
 CurStr:		ds	1
+DispHex:	db	0
+StrBuf:		ds	ScrWidth
 ;	end
