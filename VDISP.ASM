@@ -1,7 +1,9 @@
 ;****************** IBM PC file viewer ******************
 ;*       Displaying module   -    Radio-86rk version 	*
 ;*(c) TCHV  	       		     7-nov-1991, 2:00 pm*
+;*				     5-dec-2025         *
 ;*  Display 8275 and DMA 8257 controllers are required	*
+;*  or 9918A emulator on PICO                           *
 ;********************************************************
 
 ;	16-Feb-1992 - change Ram_Start to be variable
