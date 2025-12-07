@@ -539,10 +539,10 @@ _SetTab:
 IFNDEF	MSX
 	mvi	m,20h	;   Space is located in any ROM
 ELSE
+	mov	c, a
 	mvi	a, 20h
 	OUT	VDP
-	;mvi	a, 4fh
-	;OUT	VDP
+	mov	a, c
 ENDIF
 	inx	h	; and current ROM set are to be
 	dcr	b	; unchanged
