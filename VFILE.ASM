@@ -87,6 +87,19 @@ Strt:
 
 	call	DispInit
 nxt:	lhld	DispldText
+	lda	DispHex
+	ora	a
+	jz	nxt00
+	xchg
+	lhld	BuffStart
+	call	SubDE_HL
+	mov	a, e
+	ani	0F0h
+	mov	e, a
+	lhld	BuffStart
+	dad	d
+	shld	DispldText
+nxt00:
 	call	DisplyScr
 	call	BIOS_CONIN
 	cpi	3 ; ^C
