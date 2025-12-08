@@ -99,6 +99,25 @@ ENDIF
 	inx	h
 	inr	c
 	jnz	@init0
+	lhld	DispldText
+	mvi	c,80
+@init2:	mov	a,m
+	cpi	0Dh
+	jz	?TextMode
+	inx	h
+@init3:	dcr	c
+	jnz	@init2
+	mvi	a,1
+	sta	DispHex
+	ret
+
+?TextMode:
+	inx	h
+	mov	a,m
+	cpi	10
+	jnz	@init3
+	xra	a
+	sta	DispHex
 	ret
 
 ChgScrAddr:
@@ -363,6 +382,9 @@ dh03:	ldax	d
 	pop	d
 	ldax	d
 	cpi	RamDelim
+	jnz	dh04
+	lhld	RamEnd
+	call	?cdehl
 	jnz	dh04
 	xchg
 	lhld	Ram_Start
