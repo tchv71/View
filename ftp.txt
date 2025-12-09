@@ -1,0 +1,6 @@
+open 192.168.31.250 1021
+cd A.KDI
+delete view.com
+send view.com
+close
+bye

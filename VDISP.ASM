@@ -82,6 +82,11 @@ IFNDEF	MSX
 	call	ClrScr
 	call	SetScr
 ELSE
+	lxi	b,8150h ; Unset increment by one
+	mov	a,c
+	out	VDP+1
+	mov	a,b
+	out	vdp+1
 	call	ClrScr
 ENDIF
 	lxi	h,TransTbl
@@ -139,7 +144,7 @@ ClrScr2:
 	mov	a,h
 	ori	40h
 	out	vdp+1
-	lxi	b,ScrWidth*ScrHeight
+	lxi	b,ScrWidth*ScrHeight*2
 ClrLp:	xra	a
 	out	VDP
 	mvi	a,4fh
@@ -306,14 +311,14 @@ dh_s:
 	call	SubDE_HL
 	jnc	dh00
 
-	lhld	BuffEnd
-	xchg
+	pop	d
+	push	d
 	lhld	Ram_Start
 	call	SubDE_HL
 
 	lhld	RamEnd
 	mov	a, l
-	add	l
+	add	e
 	mov	e, a
 	mov	a, h
 	adc	d
@@ -324,7 +329,7 @@ dh_s:
 dh00:
 	lhld	StartRec
 	mov	a,l
-	rlc
+	rrc
 	ani	128
 	add	e
 	mov	e,a
@@ -333,7 +338,7 @@ dh00:
 	mov	a,l
 	rrc
 	ani	7fh
-	adc	d
+	add	d
 	mov	d,a
 	mov	a,h
 	rrc
@@ -389,9 +394,9 @@ dh03:	ldax	d
 	xchg
 	lhld	Ram_Start
 	xchg
-dh04:
-	cpi	BuffDelim
-	jnz	dh05 ; Read next record of file
+dh04:	ldax	d
+	ani	BuffDelimE
+	jz	dh05 ; Read next record of file
 	call	_eb01
 dh05:
 	lhld	FileEnd
@@ -464,10 +469,10 @@ NextSym:ldax	d
 	jz	_EndStr
 	cpi	0ah
 	jz	NextSym	; Skip LF symbol
-	cpi	RamDelim
-	jz	_EndRam
-	cpi	BuffDelim
-	jz	_EndBuff ; Read next record of file
+	ani	RamDelim
+	jnz	_EndRam
+	ani	BuffDelimE
+	jnz	_EndBuff ; Read next record of file
 	cpi	1ah
 	jnz	StSym
 IFNDEF	MSX
@@ -528,7 +533,10 @@ ENDIF
 	stc	; The end of screen
 	ret
 
-_EndRam:xchg
+_EndRam:lhld	RamEnd
+	call	?cdehl
+	jnz	NextSym
+	xchg
 	lhld	Ram_Start
 	xchg
 	jmp	NextSym

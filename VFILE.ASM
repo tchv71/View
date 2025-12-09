@@ -23,12 +23,13 @@ PageSize	equ	23
 @create	 equ	16h
 @setdma	 equ	1ah
 @randrd	 equ	21h
+@fsize	 equ	35
 
-	;public	RamDelim,BuffDelim
-	;public	RdAtEnd
 
-RamDelim  equ	1
-BuffDelim equ	2
+
+RamDelim	equ	1
+BuffDelim	equ	2
+BuffDelimE	equ	4
 
 RamSize	equ	4000h
 
@@ -60,29 +61,7 @@ Strt:
 	shld	Ram_Start
 	call	OpenFil	; Open file, set RecSize
 
-	lxi	h,0
-	shld	StartRec
-	shld	EndRec
-
-	lxi	h,RamStart
-	shld	BuffEnd
-	mvi	m,BuffDelim
-	dcx	h
-	mvi	m,RamDelim
-	inx	h
-	xchg
-	lhld	RecSize
-	dad	d
-	shld	BuffStart
-	shld	DispldText
-	dcx	h
-	mvi	m,BuffDelim
-
-	lxi	h,RamStart+RamSize
-	shld	RamEnd
-	mvi	m,RamDelim
-
-
+	call	BuffInit
 	call	RdIntoBuff	; Read first records into file
 
 	call	DispInit
@@ -102,6 +81,10 @@ nxt:	lhld	DispldText
 nxt00:
 	call	DisplyScr
 	call	BIOS_CONIN
+	call	CheckKey
+	jmp	nxt
+
+CheckKey:
 	cpi	3 ; ^C
 	jz	_exit
 	cpi	27
@@ -117,8 +100,7 @@ nxt00:
 	jmp	nxt03
 nxt02:	mvi	a,90h
 nxt03:	sta	PalmCtrByte
-	call	SetPalmCtr
-	jmp	nxt
+	jmp	SetPalmCtr
 
 nxt01:
 	mov	b,a
@@ -133,9 +115,13 @@ nxt01:
 	mov	a,b
 	jz	Page
 	cpi	19h
-	jz	StrUp
+	jz	_StrUp
 	cpi	1ah
-	jz	StrDn
+	jz	_StrDn
+	cpi	8
+	jz	GotoStart
+	cpi 18h
+	jz	GotoEnd
 	jmp	nxt
 
 BIOS_CONFIG:
@@ -170,15 +156,80 @@ BIOS_CONIN:
 	XCHG
 	PCHL
 
+BuffInit:
+	lxi	h,0
+	shld	StartRec
+	shld	EndRec
+
+	lxi	h,RamStart
+	shld	BuffStart
+	mvi	m,BuffDelim OR BuffDelimE
+	dcx	h
+	mvi	m, RamDelim
+	inx	h
+	;xchg
+	;lhld	RecSize
+	;dad	d
+	shld	BuffEnd
+	shld	DispldText
+
+	lxi	h,RamStart+RamSize
+	shld	RamEnd
+	mvi	m,RamDelim
+	ret
+
+;+--+ RamStart
+;|  |
+;+--+
+;|  |
+;+--+
+;|  |
+;+--+
+
+
+GotoStart:
+	call	BuffInit
+	jmp	RdIntoBuff
+
+GotoEnd:
+	call	BuffInit
+	lhld	EndRec
+
+	lxi	d,fcb
+	syscall	@fsize
+
+	lhld	fcb+21h
+	dcx	h
+	shld	EndRec
+	;mov	a, l
+	;ora	h
+	;jz	$+4
+	;dcx	h
+	shld	StartRec
+
+	xra	a
+	sta	fcb+23h
+
+	call	RdAtEnd
+	lhld	BuffEnd
+	shld	FileEnd
+	lxi	b,-16
+	dad	b
+	shld	DispldText
+
+	;xchg
+	;lhld	RecSize
+	;xchg
+	;dad	d
+	;shld	BuffStart
+	;jmp	PgUp
+	ret
 
 Page:	cpi	19h
 	jz	PgUp
 	cpi	1ah
 	jz	PgDn
-	jmp	nxt
-
-StrDn:	call	_StrDn
-	jmp	nxt
+	ret
 
 _disp_hex:
 	lda	DispHex
@@ -195,8 +246,6 @@ _exit:
 	call	RestoreScreen
 	jmp	0
 
-StrUp:	call	_StrUp
-	jmp	nxt
 
 PgUp:	mvi	b,PageSize
 _Pg:	push	b
@@ -204,13 +253,13 @@ _Pg:	push	b
 	pop	b
 	dcr	b
 	jnz	_Pg
-	jmp	nxt
+	ret
 
 PgDn:	mvi	b,PageSize
 	call	_StrDn
 	dcr	b
 	jnz	$-4
-	jmp	nxt
+	ret
 
 _StrUp:
 	lhld	DispldText
@@ -231,47 +280,49 @@ _StrUp:
 	ret
 
 _StrUpHex:
-	call	SymBack
-	cpi	BuffDelim
-	jz	@StrU6
-	cpi	RamDelim
-	jnz	@StrU5
-@StrU6:
-	lhld	DispldText
 	xchg
 	lhld	Ram_Start
-	lxi	b,128
-	dad	b
 	xchg
 	call	?cdehl
 	jnz	@StrU5
+	push	h
+	lhld	BuffStart
+	call	?cdehl
+	jnz	@StrU5
+	lhld	RamEnd
+	shld	BuffStart
+@StrU5:	xchg
+	lhld	BuffStart
+	xchg
+	call	?cdehl
+	jnz	@StrU7
+
 	push	h
 	lhld	StartRec
 	mov	a,h
 	ora	l
 	pop	h
 	rz
-	lhld	RamEnd
-	jmp	@StrU2
-@StrU5:
-	push	b
-	lxi	b, -16
+	push	h
+	call	RdAtStart
+	pop	h
+@StrU7:	lxi	b, -16
 	dad	b
-	pop	b
-	jmp	@StrU0
+	jmp	@StrU2
 
 @sbck:	lhld	RamEnd
 	ret
+
 SymBack:dcx	h
-	mov	a,m
+	mov	a, m
 	cpi	RamDelim
 	jnz	@sbck01
 	inx	h
 	xchg
 	lhld	Ram_Start
 	xchg
-	dcx	h
 	call	?cdehl
+	dcx	h
 	mvi	a, RamDelim
 	jz	@sbck
 @sbck01:
@@ -377,24 +428,31 @@ Forv:	xchg
 ; Set BuffStart and buffer delimeters
 ; HL = BuffEnd
 SetBuffInfo:
-	mvi	m,BuffDelim
-	xchg
-	lhld	RecSize
-	dad	d
-	shld	BuffStart
-	dcx	h
-	mvi	m,BuffDelim
+	lhld	BuffStart
+	mvi	a,BuffDelim
+	ora	m
+	mov	m,a
+	lhld	BuffEnd
+	mvi	a,BuffDelimE
+	ora	m
+	mov	m,a
 	ret
 
 ; Allocates RecSize bytes at start of buffer
 ; Last buffer record will be lost
 ; Returns pointer to start of allocated area
 AllocStart:
-	lhld	BuffEnd
+	lhld	BuffStart
+	call	Back
 	push	h
+	shld	BuffStart
+	xchg
+	lhld	BuffEnd
+	call	?cdehl
+	jnz	as0
 	call	Back
 	shld	BuffEnd
-	call	SetBuffInfo
+as0:	call	SetBuffInfo
 	pop	h
 	ret
 
@@ -405,7 +463,13 @@ AllocEnd:
 	push	h
 	call	Forv
 	shld	BuffEnd
-	call	SetBuffInfo
+	xchg
+	lhld	BuffStart
+	call	?cdehl
+	jnz	ae0
+	call	Forv
+	shld	BuffStart
+ae0:	call	SetBuffInfo
 	pop	h
 	ret
 
@@ -445,19 +509,6 @@ opn_f:	syscall	@open
 
 RdIntoBuff:
 	lhld	BuffStart
-IF 0
-	lxi	d,TestBuff
-lp001:	ldax	d
-	ora	a
-	rz
-	mov	m,a
-	inx	d
-	inx	h
-	jmp	lp001
-
-TestBuff:
-	db	'Test1',0dh,0ah,'Test2',1AH,0
-ENDIF
 @rdbuf:
 	xchg
 	syscall	@setdma
@@ -465,10 +516,13 @@ ENDIF
 	dad	d
 	lxi	d,fcb
 	push	h
-	syscall	@seqread
 	lhld	EndRec
+	shld	fcb+21h
 	inx	h
 	shld	EndRec
+	xra	a
+	sta	fcb+23h
+	syscall	@randrd;@seqread
 	pop	h
 	ora	a
 	jnz	_Eof
@@ -477,10 +531,12 @@ ENDIF
 	xchg
 	call	?cdehl
 	jnz	@rdbuf
+	shld	BuffEnd
 	ret
 
 _Eof:
 	shld	FileEnd
+	shld	BuffEnd
 	ret
 
 ; Read at end of ram buffer
@@ -498,9 +554,9 @@ RdAtEnd:push	h
 	xra	a
 	sta	fcb+23h
 
-	lhld	StartRec
-	inx	h
-	shld	StartRec
+	;lhld	StartRec
+	;inx	h
+	;shld	StartRec
 
 	lxi	d,fcb
 	syscall	@randrd
@@ -527,9 +583,9 @@ RdAtStart:
 	syscall	@setdma
 	lxi	d,fcb
 	syscall	@randrd
-	lhld	EndRec
-	dcx	h
-	shld	EndRec
+	;lhld	EndRec
+	;dcx	h
+	;shld	EndRec
 	pop	h
 	ora	a
 	ret
