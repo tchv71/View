@@ -164,9 +164,9 @@ BuffInit:
 	lxi	h,RamStart
 	shld	BuffStart
 	mvi	m,BuffDelim OR BuffDelimE
-	dcx	h
-	mvi	m, RamDelim
-	inx	h
+	;dcx	h
+	;mvi	m, RamDelim
+	;inx	h
 	;xchg
 	;lhld	RecSize
 	;dad	d
@@ -175,7 +175,7 @@ BuffInit:
 
 	lxi	h,RamStart+RamSize
 	shld	RamEnd
-	mvi	m,RamDelim
+	;mvi	m,RamDelim
 	ret
 
 ;+--+ RamStart
@@ -264,6 +264,7 @@ _StrUp:
 	jz	@StrU0
 	cpi	BuffDelim
 	jnz	@StrU1
+	jmp	@StrU2
 @StrU0:	inx	h
 @StrU2:
 	shld	DispldText
@@ -300,14 +301,11 @@ _StrUpHex:
 	dad	b
 	jmp	@StrU2
 
+
 @sbck:	lhld	RamEnd
 	ret
 
-SymBack:dcx	h
-	mov	a, m
-	cpi	RamDelim
-	jnz	@sbck01
-	inx	h
+SymBack:
 	xchg
 	lhld	Ram_Start
 	xchg
@@ -316,15 +314,17 @@ SymBack:dcx	h
 	mvi	a, RamDelim
 	jz	@sbck
 @sbck01:
-	cpi	BuffDelim
-	rnz
+	;cpi	BuffDelim
+	;rnz
+
+	;mov	a, m
 	push	h
 	xchg
 	lhld	BuffStart
-	dcx	h
+	;dcx	h
 	call	?cdehl
 	;inx	d
-	mvi	a,20h
+	ldax	d
 	jnz	$+5
 	mvi	a, BuffDelim
 	pop	h
@@ -346,11 +346,21 @@ ChgLp:	mov	a,m
 	cpi	1ah
 	inx	h
 	rz
-	cpi	RamDelim
+	xchg
+	lhld	RamEnd
+	xchg
+	mov	a, e
+	cmp	l
 	jnz	@strd0
+	mov	a, d
+	cmp	h
+	jnz	@strd0
+
 	lxi	h,RamStart
 	jmp	ChgLp
-@strd0:	cpi	0ah
+
+@strd0:	mov	a, m
+	cpi	0ah
 	jnz	ChgLp
 @strd1:
 	shld	DispldText
@@ -605,7 +615,7 @@ strbuff:db	14,0
 TheEnd:
 	dseg
 VRAM_ADR:	DW 0B770h	; VRAM buffer visible start address - 0B7C2h
-PPI_ADR:	DW 0C200h 	; VV55 keyboard Controller - 0C200h
+PPI_ADR:	DW 0C200h	; VV55 keyboard Controller - 0C200h
 PPI2_ADR:	DW 0C400h	; VV55 additional PPI  - 0C400h
 DISP_ADR:	DW 0C000h	; VG75 Display Controller - 0C000h
 DMA_ADR:	DW 0E000h	; VT57 DMA Controller - 0E000h

@@ -398,7 +398,7 @@ dh04:	;ldax	d
 	;ani	BuffDelimE
 	lhld	BuffEnd
 	call	?cdehl
-	cz	RdAtEnd2
+	cz	RdAtEnd
 	lhld	FileEnd
 	call	?cdehl
 	jz	dh06
@@ -451,7 +451,30 @@ SubDE_HL:
 	ret
 
 	
-NextSym:ldax	d
+NextSym:
+	mov	a, e
+	ani	7fh
+	jnz	ns02
+	lhld	RamEnd
+	mov	a, l
+	cmp	e
+	jnz	ns01
+	mov	a, h
+	cmp	d
+	jz	_EndRam
+ns01:
+	;cpi	RamDelim
+	;jz	_EndRam
+	lhld	BuffEnd
+	mov	a, l
+	cmp	e
+	jnz	ns02
+	mov	a, h
+	cmp	d
+	jz	_EndBuff
+ns02:
+	ldax	d
+	mov	c, a
 	inx	d
 	cpi	20h
 	jnc	SetSym
@@ -461,10 +484,6 @@ NextSym:ldax	d
 	jz	_EndStr
 	cpi	0ah
 	jz	NextSym	; Skip LF symbol
-	ani	RamDelim
-	jnz	_EndRam
-	ani	BuffDelimE
-	jnz	_EndBuff ; Read next record of file
 	cpi	1ah
 	jnz	StSym
 IFNDEF	MSX
@@ -488,12 +507,12 @@ IFNDEF	MSX
 	ana	c
 	jz	_EndChain
 	sta	RomSet
+	inx	h
 ELSE
 	OUT	VDP
 	;mvi	a, 4fh
 	;out	VDP
 ENDIF
-	inx	h
 	dcr	b
 	jnz	NextSym
 	jmp	_NxtStr
@@ -505,14 +524,17 @@ _SetEnd:
 IFNDEF	MSX
 	mvi	m,20h	; We can freely fill with space
 	inx	h
+	dcr	b
+	jnz	_SetEnd
 ELSE
 	mvi	a, 20h
+_SetEnd01:
 	out	VDP
 	;mvi	a,4fh
 	;out	VDP
-ENDIF
 	dcr	b
-	jnz	_SetEnd
+	jnz	_SetEnd01
+ENDIF
 
 _NxtStr:mvi	b,ScrWidth
 	lda	CurStr
@@ -525,24 +547,16 @@ ENDIF
 	stc	; The end of screen
 	ret
 
-_EndRam:lhld	RamEnd
-	call	?cdehl
-	jnz	NextSym
+_EndRam:
 	xchg
 	lhld	Ram_Start
 	xchg
 	jmp	NextSym
 
 _EndBuff:
-	call	RdAtEnd2
+	call	RdAtEnd
 	jnz	SetSym
 	jmp	NextSym
-
-RdAtEnd2:
-	push	d
-	call	RdAtEnd
-	pop	d
-	ret
 
 _Tab:	mov	a,b
 	dcr	a
@@ -867,7 +881,7 @@ VT37:
 	ret
 ENDIF
 	dseg
-ScrAddr:		ds	2
+ScrAddr:	ds	2
 AltScr:		ds	2
 RomCounter:	ds	2
 RomSet:		ds	1

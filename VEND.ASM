@@ -21,6 +21,7 @@ ELSE
 	malloc	Scr1, 4814
 ENDIF
 	malloc	TransTbl,512+1	; Transcode Table + RamDelim
+ptr	set (ptr/128+1)*128
 	malloc	RamStart,0
 
 ;	end

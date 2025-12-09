@@ -3,9 +3,9 @@ VDP		equ	98h
         .8080
         dseg
 ;IFDEF   MSX
-        org 0f00h
+        ;org 0f00h
 ;ELSE
-        org 900h
+        org 880h
 ;ENDIF
         cseg
         .phase    103h
