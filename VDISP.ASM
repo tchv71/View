@@ -385,31 +385,23 @@ dh03:	ldax	d
 	mvi	c,9
 	call	ClrLine
 	pop	d
-	ldax	d
-	cpi	RamDelim
-	jnz	dh04
+	;ldax	d
+	;cpi	RamDelim
+	;jnz	dh04
 	lhld	RamEnd
 	call	?cdehl
 	jnz	dh04
 	xchg
 	lhld	Ram_Start
 	xchg
-dh04:	ldax	d
-	ani	BuffDelimE
-	jz	dh05 ; Read next record of file
-	call	_eb01
-dh05:
+dh04:	;ldax	d
+	;ani	BuffDelimE
+	lhld	BuffEnd
+	call	?cdehl
+	cz	RdAtEnd2
 	lhld	FileEnd
 	call	?cdehl
 	jz	dh06
-IF 0
-	push	b
-	lhld	ScrAddr
-	lxi	b, ScrWidth
-	dad	b
-	pop	b
-	shld	ScrAddr
-ENDIF
 	dcr	b
 	jnz	dh_s
 	stc
@@ -542,28 +534,19 @@ _EndRam:lhld	RamEnd
 	jmp	NextSym
 
 _EndBuff:
-	call	_eb01
+	call	RdAtEnd2
 	jnz	SetSym
 	jmp	NextSym
 
-_eb01:
-	push	h
-	lhld	BuffEnd
-	dcx	d
-	call	?cdehl
-	inx	d
-	mvi	a,BuffDelim
-	pop	h
-	rnz;jnz	SetSym
-
+RdAtEnd2:
+	push	d
 	call	RdAtEnd
-	dcx	d
-	xra	a
+	pop	d
 	ret
 
 _Tab:	mov	a,b
 	dcr	a
-  	ani	7
+	ani	7
 	inr	a
 _SetTab:
 IFNDEF	MSX

@@ -4,7 +4,7 @@
 ;				     5-dec-2025         *
 ;********************************************************
 
-PageSize	equ	23
+PageSize	equ	ScrHeight-1
 ;@8255_1		equ	0f782h
 ;@8255_1		equ	0C200h
 ;extrn	_in, _out
@@ -201,10 +201,6 @@ GotoEnd:
 	lhld	fcb+21h
 	dcx	h
 	shld	EndRec
-	;mov	a, l
-	;ora	h
-	;jz	$+4
-	;dcx	h
 	shld	StartRec
 
 	xra	a
@@ -217,13 +213,7 @@ GotoEnd:
 	dad	b
 	shld	DispldText
 
-	;xchg
-	;lhld	RecSize
-	;xchg
-	;dad	d
-	;shld	BuffStart
-	;jmp	PgUp
-	ret
+	jmp	PgUp
 
 Page:	cpi	19h
 	jz	PgUp
