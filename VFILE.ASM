@@ -264,7 +264,7 @@ _StrUp:
 	jz	@StrU0
 	cpi	BuffDelim
 	jnz	@StrU1
-	jmp	@StrU2
+	;jmp	@StrU2
 @StrU0:	inx	h
 @StrU2:
 	shld	DispldText
@@ -306,36 +306,33 @@ _StrUpHex:
 	ret
 
 SymBack:
-	xchg
-	lhld	Ram_Start
-	xchg
-	call	?cdehl
 	dcx	h
-	mvi	a, RamDelim
-	jz	@sbck
-@sbck01:
-	;cpi	BuffDelim
-	;rnz
-
-	;mov	a, m
 	push	h
 	xchg
 	lhld	BuffStart
-	;dcx	h
+	dcx	h
 	call	?cdehl
-	;inx	d
 	ldax	d
 	jnz	$+5
 	mvi	a, BuffDelim
 	pop	h
-	rnz
-
+	jnz	@sbck01
 	push	h
 	call	RdAtStart
 	mov	a,m
 	pop	h
 	rnc
 	mvi	a,BuffDelim
+	ret
+@sbck01:
+	xchg
+	lhld	Ram_Start
+	dcx	h
+	xchg
+	call	?cdehl
+	mvi	a, RamDelim
+	jz	@sbck
+	mov	a, m
 	ret
 
 _StrDn:	lhld	DispldText

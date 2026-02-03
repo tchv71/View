@@ -82,7 +82,7 @@ IFNDEF	MSX
 	call	ClrScr
 	call	SetScr
 ELSE
-	lxi	b,8150h ; Unset increment by one
+	lxi	b,8154h ; Set interleave color
 	mov	a,c
 	out	VDP+1
 	mov	a,b
@@ -144,10 +144,10 @@ ClrScr2:
 	mov	a,h
 	ori	40h
 	out	vdp+1
-	lxi	b,ScrWidth*ScrHeight*2
+	lxi	b,ScrWidth*ScrHeight
 ClrLp:	xra	a
 	out	VDP
-	mvi	a,4fh
+	mvi	a,0f4h
 	out	VDP
 	dcx	b
 	mov	a,b
@@ -173,7 +173,7 @@ IFDEF	MSX
 	out	VDP+1
 	ori	40h
 	out	VDP+1
-	lxi	b,8154h ; Set increment by one
+	lxi	b,8150h ; Set increment by one
 	mov	a,c
 	out	VDP+1
 	mov	a,b
