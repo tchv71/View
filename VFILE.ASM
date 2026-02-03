@@ -531,7 +531,8 @@ RdIntoBuff:
 	shld	BuffEnd
 	ret
 
-_Eof:
+_Eof:	
+	call	@back1
 	shld	FileEnd
 	shld	BuffEnd
 	ret
