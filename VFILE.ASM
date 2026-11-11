@@ -44,12 +44,15 @@ syscall	macro	call_number
 ;extrn	DispInit	; Initialise displaying of a text
 ;extrn	DisplyScr	; Display a screen from HL position
 
-;extrn	RamStart	; External label - start of
+;extrn	@RamStart	; External label - start of
 			; unused ram
 
-;public	Ram_Start
+;public	RamStart
 
 Strt:
+	lxi	h, fcb
+	lxi	b, DataEnd - fcb
+	call	RtlZeroMemory
 IFDEF SHELL
 	xchg
 	shld	fs_selfName
@@ -68,8 +71,8 @@ ENDIF
 
 	call	SaveScreen
 
-	lxi	h,RamStart
-	shld	Ram_Start
+	lxi	h,@RamStart
+	shld	RamStart
 	call	OpenFil	; Open file, set RecSize
 
 	call	BuffInit
@@ -97,6 +100,15 @@ nxt00:
 
 fs:
 	jmp	0f800h
+
+RtlZeroMemory:
+	mvi	m,0
+	inx	h
+	dcx	b
+	mov	a,b
+	ora	c
+	jnz	RtlZeroMemory
+	ret
 
 CheckKey:
 	cpi	3 ; ^C
@@ -180,7 +192,7 @@ BuffInit:
 	shld	StartRec
 	shld	EndRec
 
-	lxi	h,RamStart
+	lxi	h,@RamStart
 	shld	BuffStart
 	mvi	m,BuffDelim OR BuffDelimE
 	;dcx	h
@@ -192,12 +204,12 @@ BuffInit:
 	shld	BuffEnd
 	shld	DispldText
 
-	lxi	h,RamStart+RamSize
+	lxi	h,@RamStart+RamSize
 	shld	RamEnd
 	;mvi	m,RamDelim
 	ret
 
-;+--+ RamStart
+;+--+ @RamStart
 ;|  |
 ;+--+
 ;|  |
@@ -300,19 +312,21 @@ _StrUp:
 	ret
 
 _StrUpHex:
+	mvi	c,0
 	xchg
-	lhld	Ram_Start
+	lhld	RamStart
 	xchg
 	call	?cdehl
 	jnz	@StrU5
-	push	h
+	xchg
 	lhld	BuffStart
+	shld	BuffStartBack
+	xchg
 	call	?cdehl
 	jnz	@StrU5
-	lhld	RamEnd
-	shld	BuffStart
+	mvi	c,1
 @StrU5:	xchg
-	lhld	BuffStart
+	lhld	BuffStartBack
 	xchg
 	call	?cdehl
 	jnz	@StrU7
@@ -323,6 +337,14 @@ _StrUpHex:
 	ora	l
 	pop	h
 	rz
+	mov	a, c
+	ora	a
+	jz	@StrU8
+	push	h
+	lhld	RamEnd
+	shld	BuffStart
+	pop	h
+@StrU8:
 	push	h
 	call	RdAtStart
 	pop	h
@@ -355,7 +377,7 @@ SymBack:
 	ret
 @sbck01:
 	xchg
-	lhld	Ram_Start
+	lhld	RamStart
 	dcx	h
 	xchg
 	call	?cdehl
@@ -382,7 +404,7 @@ ChgLp:	mov	a,m
 	cmp	h
 	jnz	@strd0
 
-	lxi	h,RamStart
+	lxi	h,@RamStart
 	jmp	ChgLp
 
 @strd0:	mov	a, m
@@ -391,6 +413,8 @@ ChgLp:	mov	a,m
 @strd1:
 	shld	DispldText
 	ret
+
+BuffStartBack:	ds	2
 
 _StrDnHex:
 	push	b
@@ -402,7 +426,7 @@ _StrDnHex:
 	xchg
 	call	?cdehl
 	jnz	@strd2
-	lxi	h,RamStart
+	lxi	h,@RamStart
 	jmp	@strd1
 @strd2:
 	push	h
@@ -435,7 +459,7 @@ _StrDnHex:
 	cmp	l
 	ret
 
-Back:	lxi	d,RamStart
+Back:	lxi	d,@RamStart
 	call	?cdehl
 	jnz	@back1
 	lhld	RamEnd
@@ -453,7 +477,7 @@ Forv:	xchg
 	xchg
 	call	?cdehl
 	rnz
-	lxi	h,RamStart
+	lxi	h,@RamStart
 	ret
 
 
@@ -858,21 +882,4 @@ PALM_CTR_ADR:	DW 0CE00h	; Palmira Control Byte
 fs_cmdLine:	DS	2
 fs_selfName:	DS	2
 ENDIF
-	;dseg
-	aseg
-	;org 900h
-
-	;dseg
-
-fcb:	ds	25h
-Ram_Start:	ds	2
-DispldText:	ds	2
-RamEnd:		ds	2
-FileEnd:	ds	2
-BuffStart:	ds	2
-BuffEnd:	ds	2
-RecSize:	ds	2
-StartRec:	ds	2
-EndRec:		ds	2
-PalmCtrByte:	ds	1
 ;	end	strt

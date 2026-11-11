@@ -4,14 +4,39 @@
 ;				     5-dec-2025         *
 ;********************************************************
 
+	dseg
+	.dephase
+	.phase 9B0h
+
+fcb:	ds	25h
+RamStart:	ds	2
+DispldText:	ds	2
+RamEnd:		ds	2
+FileEnd:	ds	2
+BuffStart:	ds	2
+BuffEnd:	ds	2
+RecSize:	ds	2
+StartRec:	ds	2
+EndRec:		ds	2
+PalmCtrByte:	ds	1
+
+	dseg
+ScrAddr:	ds	2
+AltScr:		ds	2
+RomCounter:	ds	2
+RomSet:		ds	1
+CurStr:		ds	1
+DispHex:	db	0
+StrBuf:		ds	ScrWidth
+DataEnd:	ds	1
+
 malloc	macro	label,size
 	;public	label
 label	equ	ptr
 ptr	set	ptr+size
 	endm
-	;cseg
 
-	aseg;dseg
+	dseg
 ptr	set	$
 
 IFNDEF	MSX
@@ -22,6 +47,6 @@ ELSE
 ENDIF
 	malloc	TransTbl,512+1	; Transcode Table + RamDelim
 ptr	set (ptr/128+1)*128
-	malloc	RamStart,0
+	malloc	@RamStart,0
 
 ;	end

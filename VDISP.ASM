@@ -6,7 +6,7 @@
 ;*  or 9918A emulator on PICO                           *
 ;********************************************************
 
-;	16-Feb-1992 - change RamStart to be variable
+;	16-Feb-1992 - change @RamStart to be variable
 
 ScrWidth	equ	80
 IFNDEF	MSX
@@ -23,7 +23,7 @@ ENDIF
 ; External adresses
 	;extrn	Scr1,Scr2,TransTbl
 ; External variable
-	;extrn	RamStart
+	;extrn	@RamStart
 ; Text delimiters
 	;extrn	RamDelim
 	;extrn	BuffDelim
@@ -317,17 +317,11 @@ dh_s:
 	push	d
 	lhld	RamStart
 	call	SubDE_HL
-	; if (de < RamStart)
+	; if (de < @RamStart)
 	lhld	RamEnd 
-	mov	a, l
-	add	e
-	mov	e, a
-	mov	a, h
-	adc	d
-	mov	d, a
-
+	call	AddDE_HL
 	lhld	BuffStart
-	call	SubDE_HL ; de = de - RamStart + RamEnd - BuffStart 
+	call	SubDE_HL ; de = de - @RamStart + RamEnd - BuffStart 
 dh00:
 	lhld	StartRec
 IFNDEF SHELL
@@ -335,12 +329,7 @@ IFNDEF SHELL
 ELSE
 	call	mul512
 ENDIF
-	mov	a,l
-	add	e
-	mov	e,a
-	mov	a,h
-	adc	d
-	mov	d,a
+	call	AddDE_HL
 	mvi	a,0
 	adc	c
 	lxi	h,StrBuf
@@ -356,7 +345,7 @@ ENDIF
 	push	h
 	lhld	BuffEnd
 	xchg
-	call	SubDE_HL ; de = de - RamStart + RamEnd - BuffStart 
+	call	SubDE_HL ; de = de - @RamStart + RamEnd - BuffStart 
 	mov	a, d
 	ora	a
 	jnz	_FullStr
@@ -384,11 +373,8 @@ dh01:	ldax	d
 	inx	h
 	dcr	c
 	jnz	dh01
-	mov	d,b
 	call	_FillZeroB
-	mov	b,d
 	call	_FillZeroB
-	mov	b,d
 	call	_FillZeroB
 	pop	b
 	pop	d
@@ -441,13 +427,17 @@ dh04:	pop	b
 	ret
 
 _FillZeroB:
+	push	b
 	inr	b
 dh012:
 	dcr	b
-	rz
+	jz	dh014
 	mvi	m,0
 	inx	h
 	jmp	dh012
+dh014:
+	pop	b
+	ret
 
 
 dh06:	mvi	c,ScrWidth
@@ -490,6 +480,15 @@ SubDE_HL:
 	mov	e, a
 	mov	a, d
 	sbb	h
+	mov	d, a
+	ret
+
+AddDE_HL:
+	mov	a, e
+	add	l
+	mov	e, a
+	mov	a, d
+	adc	h
 	mov	d, a
 	ret
 
@@ -917,12 +916,4 @@ VT37:
 	call	_out	; dma+0fh
 	ret
 ENDIF
-	aseg;dseg
-ScrAddr:	ds	2
-AltScr:		ds	2
-RomCounter:	ds	2
-RomSet:		ds	1
-CurStr:		ds	1
-DispHex:	db	0
-StrBuf:		ds	ScrWidth
 ;	end

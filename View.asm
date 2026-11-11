@@ -3,8 +3,8 @@ VDP	equ	98h
 SHELL   equ     1
 
         .8080
-        aseg;dseg
-        org 9a0h
+        dseg
+        org 9b0h
 
         cseg
         .phase    103h
