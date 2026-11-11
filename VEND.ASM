@@ -11,7 +11,7 @@ ptr	set	ptr+size
 	endm
 	;cseg
 
-	dseg
+	aseg;dseg
 ptr	set	$
 
 IFNDEF	MSX

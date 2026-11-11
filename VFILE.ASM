@@ -50,10 +50,21 @@ syscall	macro	call_number
 ;public	Ram_Start
 
 Strt:
+IFDEF SHELL
+	xchg
+	shld	fs_selfName
+	xchg
+	shld	fs_cmdLine
+	mov	h,b
+	mov	l,c
+	shld	fs+1
+ENDIF
 	lxi	sp,100h
 
+IFNDEF SHELL
 	lxi	d,VRAM_ADR
 	call	BIOS_CONFIG	; Configure ports
+ENDIF
 
 	call	SaveScreen
 
@@ -83,6 +94,9 @@ nxt00:
 	call	BIOS_CONIN
 	call	CheckKey
 	jmp	nxt
+
+fs:
+	jmp	0f800h
 
 CheckKey:
 	cpi	3 ; ^C
@@ -140,7 +154,9 @@ BIOS_CONFIG:
 	POP	D
 	PCHL
 
+
 BIOS_CONIN:
+IFNDEF SHELL
 	LHLD	1
 	LXI	D,6
 	DAD	D
@@ -155,6 +171,9 @@ BIOS_CONIN:
 	MOV	D,M
 	XCHG
 	PCHL
+ELSE
+	jmp	0f803h
+ENDIF
 
 BuffInit:
 	lxi	h,0
@@ -234,8 +253,18 @@ _exit:
 	mov	a,b
 	out	vdp+1
 	call	RestoreScreen
+IFNDEF SHELL
 	jmp	0
+ELSE
+	lxi	h, ShPath
+	lxi	d, cmdStr
+	xra	a
+	call	fs
+ENDIF
 
+ShPath:
+	DB	"BOOT/SHELL.RK",0
+cmdStr:	Db	0
 
 PgUp:	mvi	b,PageSize
 _Pg:	push	b
@@ -376,10 +405,16 @@ _StrDnHex:
 	lxi	h,RamStart
 	jmp	@strd1
 @strd2:
+	push	h
+	push	b
+	lxi	b,(PageSize-1)*16
+	dad	b
+	pop	b
 	xchg
 	lhld	FileEnd
 	xchg
 	call	?cdehl
+	pop	h
 	rz
 	jmp	@strd1
 ;----------------------------------------------
@@ -473,8 +508,14 @@ ae0:	call	SetBuffInfo
 
 DefFCB1	equ	5ch	; CP/M default fcb 1
 EXTRN	parsfn,prnt
-OpenFil:lxi	h,128
+OpenFil:
+IFNDEF	SHELL
+	lxi	h,128
+ELSE
+	lxi	h,512
+ENDIF
 	shld	RecSize
+IFNDEF SHELL
 	lxi	d,DefFCB1+1
 	ldax	d
 	dcx	d
@@ -489,6 +530,7 @@ OpenFil:lxi	h,128
 	dcr	b
 	jnz	@cpy
 	lxi	d,fcb
+ENDIF
 	jmp	opn_f
 
 nextfil:call	askfn
@@ -496,7 +538,16 @@ nextfil:call	askfn
 	push	d
 	call	PARSFN
 	pop	d
-opn_f:	syscall	@open
+opn_f:
+IFNDEF SHELL
+	syscall	@open
+ELSE
+O_OPEN	equ	0
+	lhld	fs_cmdLine
+	MVI	D,O_OPEN
+	mvi	a, 2
+	call	fs
+ENDIF
 	inr	a
 	rnz
 	call	PRNT
@@ -506,6 +557,7 @@ opn_f:	syscall	@open
 
 RdIntoBuff:
 	lhld	BuffStart
+IFNDEF SHELL
 @rdbuf:
 	xchg
 	syscall	@setdma
@@ -529,8 +581,102 @@ RdIntoBuff:
 	call	?cdehl
 	jnz	@rdbuf
 	shld	BuffEnd
+ELSE
+SEEK_START	equ	0
+SEEK_PTR	equ	1
+SEEK_END	equ	2
+
+	push	h
+	lxi	h,0
+	mvi	b,100
+	mvi	a,3
+	call	fs
+	shld	fileSize
+	mov	a,e
+	sta	fileSizeHi
+	pop	h
+@rdbuf:
+	;xchg
+	push	h
+	push	h
+	lhld	EndRec
+IFNDEF SHELL
+	call	mul128
+ELSE
+	call	mul512
+ENDIF
+	lda	fileSizeHi
+	cmp	c
+	jnz	rdb00
+	xchg
+	lhld	fileSize
+	xchg
+	call	?cdehl
+	jnz	rdb00
+	pop	h
+	jmp	rdb01
+rdb00:
+	mov	e, c
+	mvi	d, 0
+	mvi	b, SEEK_START
+	mvi	a, 3
+	call	fs
+	pop	d
+	push	d
+	lhld	RecSize
+	mvi	a,4
+	call	fs
+	mov	e,a
+	push	d
+	xchg
+	lhld	RecSize
+	xchg
+	call	?cdehl
+	pop	d
+	mov	a,e
+	pop	d
+	jz	_FullRec
+	dad	d
+rdb01:
+	shld	BuffEnd
+	shld	FileEnd
+	pop	h
+	ret
+_FullRec:
+	pop	h
+	ora	a
+	jnz	_Eof
+	xchg
+	lhld	RecSize
+	mov	b,h
+	mov	c,l
+	dad	d
+	xchg
+	lhld	EndRec
+	inx	h
+	shld	EndRec
+	lhld	RamEnd
+	xchg
+	call	?cdehl
+	jz	stopRead
+	push	h
+	lhld	fileSize
+	xchg
+	lhld	EndRec
+	call	mul512
+	inx	h
+	call	?cdehl
+	pop	h
+	jp	@rdbuf
+	shld	RamEnd
+	shld	FileEnd
+ENDIF
+stopRead:
+	shld	BuffEnd
 	ret
 
+fileSize:	ds	2
+fileSizeHi:	ds	1
 _Eof:	
 	call	@back1
 	shld	FileEnd
@@ -538,17 +684,18 @@ _Eof:
 	ret
 
 ; Read at end of ram buffer
-RdAtEnd:push	h
+RdAtEnd:
+	push	h
 	push	d
 	push	b
-	call	AllocEnd
-	xchg
-	syscall	@setdma
-
 	lhld	EndRec
+IFNDEF SHELL
 	shld	fcb+21h
 	inx	h
 	shld	EndRec
+	call	AllocEnd
+	xchg
+	syscall	@setdma
 	xra	a
 	sta	fcb+23h
 
@@ -558,7 +705,39 @@ RdAtEnd:push	h
 
 	lxi	d,fcb
 	syscall	@randrd
-
+ELSE
+	inx	h
+	shld	EndRec
+	call	mul512
+	lda	fileSizeHi
+	cmp	c
+	jc	rdate_exit
+	push	h
+	xchg
+	lhld	fileSize
+	xchg
+	call	?cdehl
+	pop	h
+	jc	rdate_exit
+	push	h
+	call	AllocEnd
+	xchg
+	pop	h
+	push	d
+	mvi	d,0
+	mov	e,c
+	mvi	a,3
+	call	fs
+	pop	d
+	lhld	RecSize
+	mvi	a,4
+	call	fs
+	jmp	rdate_00
+rdate_exit:
+	mvi	a,1
+	ora	a
+rdate_00:
+ENDIF
 	pop	b
 	pop	d
 	pop	h
@@ -575,12 +754,25 @@ RdAtStart:
 	jz	_BegFil
 	dcx	h
 	shld	StartRec
+IFNDEF	SHELL
 	shld	fcb+21h
+ELSE
+	call	mul512
+	lxi	d,0
+	mvi	a,3
+	call	fs
+ENDIF
 	call	AllocStart
 	xchg
+IFDEF SHELL
 	syscall	@setdma
 	lxi	d,fcb
 	syscall	@randrd
+ELSE
+	lhld	RecSize
+	mvi	a,4
+	call	fs
+ENDIF
 	;lhld	EndRec
 	;dcx	h
 	;shld	EndRec
@@ -590,6 +782,40 @@ RdAtStart:
 
 _BegFil:pop	h
 	stc
+	ret
+
+; C,HL = HL * 128
+mul128:
+	mov	a, h
+	rar
+	mov	c,a
+	mvi	h,80h
+	jc	$+5
+	mvi	h, 0
+	mov	a,l
+	rar
+	push	psw
+	ora	h
+	mov	h,a
+	pop	psw
+	mvi	l,80h
+	rc
+	mvi	l,0
+	ret
+
+; C,HL = HL * 512
+mul512:
+	xra	a
+	mov	a, h
+	ral
+	mov	c,a
+	xra	a
+	mov	a,l
+	ral
+	mov	h,a
+	jnc	$+4
+	inr	c
+	mvi	l,0
 	ret
 
 ; Ask file name
@@ -611,7 +837,7 @@ askfn:	call	prnt
 strbuff:db	14,0
 	ds	15
 TheEnd:
-	dseg
+IFNDEF SHELL
 VRAM_ADR:	DW 0B770h	; VRAM buffer visible start address - 0B7C2h
 PPI_ADR:	DW 0C200h	; VV55 keyboard Controller - 0C200h
 PPI2_ADR:	DW 0C400h	; VV55 additional PPI  - 0C400h
@@ -620,6 +846,22 @@ DMA_ADR:	DW 0E000h	; VT57 DMA Controller - 0E000h
 
 PALM_CTR_ADR:	DW 0CE00h	; Palmira Control Byte
 		DW 0,0,0	; Reserved for future use
+ELSE
+VRAM_ADR:	DW 0		; VRAM buffer visible start address - 0B7C2h
+PPI_ADR:	DW 0C200h	; VV55 keyboard Controller - 0C200h
+PPI2_ADR:	DW 0C400h	; VV55 additional PPI  - 0C400h
+DISP_ADR:	DW 0C000h	; VG75 Display Controller - 0C000h
+DMA_ADR:	DW 0C600h	; VT57 DMA Controller - 0E000h
+
+PALM_CTR_ADR:	DW 0CE00h	; Palmira Control Byte
+		DW 0,0,0	; Reserved for future use
+fs_cmdLine:	DS	2
+fs_selfName:	DS	2
+ENDIF
+	;dseg
+	aseg
+	;org 900h
+
 	;dseg
 
 fcb:	ds	25h

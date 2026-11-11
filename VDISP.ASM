@@ -6,7 +6,7 @@
 ;*  or 9918A emulator on PICO                           *
 ;********************************************************
 
-;	16-Feb-1992 - change Ram_Start to be variable
+;	16-Feb-1992 - change RamStart to be variable
 
 ScrWidth	equ	80
 IFNDEF	MSX
@@ -23,7 +23,7 @@ ENDIF
 ; External adresses
 	;extrn	Scr1,Scr2,TransTbl
 ; External variable
-	;extrn	Ram_Start
+	;extrn	RamStart
 ; Text delimiters
 	;extrn	RamDelim
 	;extrn	BuffDelim
@@ -245,8 +245,10 @@ DsplScr:xchg
 	lxi	h,0
 	shld	RomCounter
 	lhld	ScrAddr
+IFNDEF	MSX
 	lxi	b,3*ScrWidth
 	dad	b
+ENDIF
 	mvi	a,ScrHeight
 	sta	CurStr
 	mvi	b,ScrWidth
@@ -305,18 +307,18 @@ ENDIF
 	mov	a,h
 	out	VDP+1
 dh_s:
+	push	b
 	push	d
-	mvi	c,16
 	lhld	BuffStart
 	call	SubDE_HL
 	jnc	dh00
 
 	pop	d
 	push	d
-	lhld	Ram_Start
+	lhld	RamStart
 	call	SubDE_HL
-
-	lhld	RamEnd
+	; if (de < RamStart)
+	lhld	RamEnd 
 	mov	a, l
 	add	e
 	mov	e, a
@@ -325,23 +327,22 @@ dh_s:
 	mov	d, a
 
 	lhld	BuffStart
-	call	SubDE_HL
+	call	SubDE_HL ; de = de - RamStart + RamEnd - BuffStart 
 dh00:
 	lhld	StartRec
+IFNDEF SHELL
+	call	mul128
+ELSE
+	call	mul512
+ENDIF
 	mov	a,l
-	rrc
-	ani	128
 	add	e
 	mov	e,a
-	jnc	$+4
-	inr	d
-	mov	a,l
-	rrc
-	ani	7fh
-	add	d
-	mov	d,a
 	mov	a,h
-	rrc
+	adc	d
+	mov	d,a
+	mvi	a,0
+	adc	c
 	lxi	h,StrBuf
 	call	ByteHexToBuf
 	mov	a,d
@@ -352,6 +353,30 @@ dh00:
 	inx	h
 	pop	d
 	push	d
+	push	h
+	lhld	BuffEnd
+	xchg
+	call	SubDE_HL ; de = de - RamStart + RamEnd - BuffStart 
+	mov	a, d
+	ora	a
+	jnz	_FullStr
+	mov	a,e
+	ani	0F0H
+	jnz	_FullStr
+	mov	a, e
+	ani	0fh
+	mov	c, a
+	mvi	a, 16
+	sub	c
+	mov	b, a
+	jmp	dh013
+_FullStr:
+	mvi	c,16
+	mvi	b,0
+dh013:	pop	h
+	pop	d
+	push	d
+	push	b
 dh01:	ldax	d
 	inx	d
 	call	ByteHexToBuf
@@ -359,8 +384,15 @@ dh01:	ldax	d
 	inx	h
 	dcr	c
 	jnz	dh01
+	mov	d,b
+	call	_FillZeroB
+	mov	b,d
+	call	_FillZeroB
+	mov	b,d
+	call	_FillZeroB
+	pop	b
 	pop	d
-	mvi	c,16
+	;mvi	c,16
 dh02:	ldax	d
 	inx	d
 	cpi	20h
@@ -370,7 +402,7 @@ dh02:	ldax	d
 	inx	h
 	dcr	c
 	jnz	dh02
-
+	call	_FillZeroB
 	push	d
 	mvi	c,71
 	xchg
@@ -392,9 +424,10 @@ dh03:	ldax	d
 	call	?cdehl
 	jnz	dh04
 	xchg
-	lhld	Ram_Start
+	lhld	RamStart
 	xchg
-dh04:	;ldax	d
+dh04:	pop	b
+	;ldax	d
 	;ani	BuffDelimE
 	lhld	BuffEnd
 	call	?cdehl
@@ -406,6 +439,16 @@ dh04:	;ldax	d
 	jnz	dh_s
 	stc
 	ret
+
+_FillZeroB:
+	inr	b
+dh012:
+	dcr	b
+	rz
+	mvi	m,0
+	inx	h
+	jmp	dh012
+
 
 dh06:	mvi	c,ScrWidth
 	call	ClrLine
@@ -450,27 +493,20 @@ SubDE_HL:
 	mov	d, a
 	ret
 
-	
+; de - displayed text	
 NextSym:
-	mov	a, e
-	ani	7fh
+	;mov	a, e
+	;ani	7fh
+	lda	RamEnd
+	cmp	e
 	jnz	ns02
 	lhld	RamEnd
-	mov	a, l
-	cmp	e
-	jnz	ns01
-	mov	a, h
-	cmp	d
+	call	?cdehl
 	jz	_EndRam
-ns01:
 	;cpi	RamDelim
 	;jz	_EndRam
 	lhld	BuffEnd
-	mov	a, l
-	cmp	e
-	jnz	ns02
-	mov	a, h
-	cmp	d
+	call	?cdehl
 	jz	_EndBuff
 ns02:
 	ldax	d
@@ -497,7 +533,7 @@ ENDIF
 	inx	h
 	dcx	d
 	dcr	b
-	jz	_NxtStr
+	jz	_EndScr;_NxtStr
 	jmp	NextSym
 StSym:	mvi	a,20h	; Other CNTRL symbols are not displayed
 SetSym:	;TrnsSym	; a = Translated symbol , c=its ROM set
@@ -541,6 +577,7 @@ _NxtStr:mvi	b,ScrWidth
 	dcr	a
 	sta	CurStr
 	jnz	NextSym
+_EndScr:
 IFNDEF	MSX
 	mvi	m,0	; Terminate chain
 ENDIF
@@ -549,7 +586,7 @@ ENDIF
 
 _EndRam:
 	xchg
-	lhld	Ram_Start
+	lhld	RamStart
 	xchg
 	jmp	NextSym
 
@@ -880,7 +917,7 @@ VT37:
 	call	_out	; dma+0fh
 	ret
 ENDIF
-	dseg
+	aseg;dseg
 ScrAddr:	ds	2
 AltScr:		ds	2
 RomCounter:	ds	2

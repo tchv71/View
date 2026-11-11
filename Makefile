@@ -20,9 +20,9 @@ View.REL: View.ASM $(ASMS)
 	../m80noi/x64/Release/m80noi.exe VIEW.PRN
 
 View.COM: VIEW.REL
-	$(M80PATH)/L80 /P:103/d:880,VIEW,MYLIB/S,$@/Y/N/E/U
+	$(M80PATH)/L80 /P:103/d:900,VIEW,MYLIB/S,$@/Y/N/E/U
 	../m80noi/x64/Release/m80noi.exe view.prn
-	ftp.bat
+#	ftp.bat
 
 send: View.rkl
 	MODE $(PORT): baud=115200 parity=N data=8 stop=1
@@ -30,3 +30,4 @@ send: View.rkl
 
 View.rkl: View.COM
 	../makerk/Release/makerk.exe 100 $< $@
+	copy view.rkl view.rk

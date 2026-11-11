@@ -1,12 +1,11 @@
-MSX		equ	1
-VDP		equ	98h
+MSX	equ	1
+VDP	equ	98h
+SHELL   equ     1
+
         .8080
-        dseg
-;IFDEF   MSX
-        ;org 0f00h
-;ELSE
-        org 880h
-;ENDIF
+        aseg;dseg
+        org 9a0h
+
         cseg
         .phase    103h
 include vfile.asm
