@@ -406,13 +406,7 @@ dh03:	ldax	d
 	;ldax	d
 	;cpi	RamDelim
 	;jnz	dh04
-	lhld	RamEnd
-	call	?cdehl
-	jnz	dh04
-	xchg
-	lhld	RamStart
-	xchg
-dh04:	pop	b
+	pop	b
 	;ldax	d
 	;ani	BuffDelimE
 	lhld	BuffEnd

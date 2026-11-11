@@ -727,6 +727,10 @@ IFNDEF SHELL
 
 	lxi	d,fcb
 	syscall	@randrd
+	pop	b
+	pop	d
+	pop	h
+	ret
 ELSE
 	inx	h
 	shld	EndRec
@@ -757,13 +761,17 @@ ELSE
 	jmp	rdate_00
 rdate_exit:
 	mvi	a,1
-	ora	a
 rdate_00:
-ENDIF
+	ora	a
 	pop	b
 	pop	d
 	pop	h
+	rnz
+	xchg
+	lhld	RamStart
+	xchg
 	ret
+ENDIF
 
 ; Read at start of ram buffer
 ; Returns cy=0 ok
