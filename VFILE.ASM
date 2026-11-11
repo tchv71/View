@@ -150,6 +150,7 @@ nxt01:
 	jz	GotoEnd
 	jmp	nxt
 
+IFNDEF SHELL
 BIOS_CONFIG:
 	LHLD	1
 	LXI	B,30H
@@ -168,7 +169,6 @@ BIOS_CONFIG:
 
 
 BIOS_CONIN:
-IFNDEF SHELL
 	LHLD	1
 	LXI	D,6
 	DAD	D
@@ -605,6 +605,7 @@ IFNDEF SHELL
 	call	?cdehl
 	jnz	@rdbuf
 	shld	BuffEnd
+	ret
 ELSE
 SEEK_START	equ	0
 SEEK_PTR	equ	1
@@ -618,11 +619,9 @@ SEEK_END	equ	2
 	shld	fileSize
 	mov	a,e
 	sta	fileSizeHi
-	pop	h
+	pop	d
 @rdbuf:
-	;xchg
-	push	h
-	push	h
+	push	d
 	lhld	EndRec
 IFNDEF SHELL
 	call	mul128
@@ -632,13 +631,13 @@ ENDIF
 	lda	fileSizeHi
 	cmp	c
 	jnz	rdb00
+	 push	d
 	xchg
 	lhld	fileSize
 	xchg
 	call	?cdehl
-	jnz	rdb00
-	pop	h
-	jmp	rdb01
+	 pop	d
+	jz	rdb01
 rdb00:
 	mov	e, c
 	mvi	d, 0
@@ -651,12 +650,12 @@ rdb00:
 	mvi	a,4
 	call	fs
 	mov	e,a
-	push	d
+	 push	d
 	xchg
 	lhld	RecSize
 	xchg
 	call	?cdehl
-	pop	d
+	 pop	d
 	mov	a,e
 	pop	d
 	jz	_FullRec
@@ -680,27 +679,26 @@ _FullRec:
 	inx	h
 	shld	EndRec
 	lhld	RamEnd
-	xchg
 	call	?cdehl
 	jz	stopRead
-	push	h
+	xchg
+	push	d
 	lhld	fileSize
 	xchg
 	lhld	EndRec
 	call	mul512
 	inx	h
 	call	?cdehl
-	pop	h
+	pop	d
 	jp	@rdbuf
+	xchg
 	shld	RamEnd
 	shld	FileEnd
-ENDIF
 stopRead:
 	shld	BuffEnd
 	ret
+ENDIF
 
-fileSize:	ds	2
-fileSizeHi:	ds	1
 _Eof:	
 	call	@back1
 	shld	FileEnd
@@ -808,6 +806,7 @@ _BegFil:pop	h
 	stc
 	ret
 
+IFNDEF SHELL
 ; C,HL = HL * 128
 mul128:
 	mov	a, h
@@ -826,7 +825,7 @@ mul128:
 	rc
 	mvi	l,0
 	ret
-
+ELSE
 ; C,HL = HL * 512
 mul512:
 	xra	a
@@ -841,6 +840,7 @@ mul512:
 	inr	c
 	mvi	l,0
 	ret
+ENDIF
 
 ; Ask file name
 ;  Returns HL - file name (ASCIIZ)
@@ -856,7 +856,6 @@ askfn:	call	prnt
 	mvi	m,0
 	xchg
 	ret
-
 ;------------------------------------
 strbuff:db	14,0
 	ds	15
@@ -879,7 +878,5 @@ DMA_ADR:	DW 0C600h	; VT57 DMA Controller - 0E000h
 
 PALM_CTR_ADR:	DW 0CE00h	; Palmira Control Byte
 		DW 0,0,0	; Reserved for future use
-fs_cmdLine:	DS	2
-fs_selfName:	DS	2
 ENDIF
 ;	end	strt

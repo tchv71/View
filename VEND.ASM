@@ -19,6 +19,12 @@ RecSize:	ds	2
 StartRec:	ds	2
 EndRec:		ds	2
 PalmCtrByte:	ds	1
+fileSize:	ds	2
+fileSizeHi:	ds	1
+IFDEF SHELL
+fs_cmdLine:	DS	2
+fs_selfName:	DS	2
+ENDIF
 
 	dseg
 ScrAddr:	ds	2
