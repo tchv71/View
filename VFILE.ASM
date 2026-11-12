@@ -188,7 +188,8 @@ BIOS_CONIN:
 	XCHG
 	PCHL
 ELSE
-	jmp	0f803h
+BIOS_CONIN:
+jmp	0f803h
 ENDIF
 
 BuffInit:
@@ -670,13 +671,13 @@ rdb01:
 	pop	h
 	ret
 _FullRec:
-	pop	h
+	;pop	h
 	ora	a
 	jnz	_Eof
-	xchg
+	;xchg
 	lhld	RecSize
-	mov	b,h
-	mov	c,l
+	;mov	b,h
+	;mov	c,l
 	dad	d
 	xchg
 	lhld	EndRec
@@ -685,7 +686,7 @@ _FullRec:
 	lhld	RamEnd
 	call	?cdehl
 	jz	stopRead
-	xchg
+	;xchg
 	push	d
 	lhld	fileSize
 	xchg
