@@ -29,5 +29,5 @@ send: View.rkl
 	cmd /C copy /B  $< $(PORT)
 
 View.rkl: View.COM
-	../makerk/Release/makerk.exe 100 $< $@ 890
+	../makerk/Release/makerk.exe 100 $< $@ 8b0
 	copy view.rkl view.rk

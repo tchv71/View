@@ -50,9 +50,13 @@ syscall	macro	call_number
 ;public	RamStart
 
 Strt:
+	push	h
+	push	b
 	lxi	h, fcb
 	lxi	b, DataEnd - fcb
 	call	RtlZeroMemory
+	pop	b
+	pop	h
 IFDEF SHELL
 	xchg
 	shld	fs_selfName
