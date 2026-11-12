@@ -408,13 +408,14 @@ ChgLp:	mov	a,m
 	inx	h
 	rz
 	xchg
+	lhld	FileEnd
+	call	?cdehl
+	xchg
+	rz
+	xchg
 	lhld	RamEnd
 	xchg
-	mov	a, e
-	cmp	l
-	jnz	@strd0
-	mov	a, d
-	cmp	h
+	call	?cdehl
 	jnz	@strd0
 
 	lxi	h,@RamStart
@@ -424,6 +425,7 @@ ChgLp:	mov	a,m
 	cpi	0ah
 	jnz	ChgLp
 @strd1:
+	inx	h
 	shld	DispldText
 	ret
 
