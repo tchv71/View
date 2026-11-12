@@ -76,8 +76,6 @@ ENDIF
 IFDEF SHELL
 	lxi	H,fntName
 	call	LoadFont
-	lxi	b,0
-	call	T_SetAddrWrite
 ENDIF
 	call	SaveScreen
 	call	DispInit
