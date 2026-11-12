@@ -30,5 +30,11 @@
     <None Include="View.asm">
       <Filter>Source Files</Filter>
     </None>
+    <None Include="..\rk_maxi\ftp.bat">
+      <Filter>Source Files</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="ftp.txt" />
   </ItemGroup>
 </Project>

@@ -31,3 +31,4 @@ send: View.rkl
 View.rkl: View.COM
 	../makerk/Release/makerk.exe 100 $< $@ 8b0
 	copy view.rkl view.rk
+	ftp.bat

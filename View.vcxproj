@@ -89,11 +89,15 @@
   <ItemDefinitionGroup>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <None Include="..\rk_maxi\ftp.bat" />
     <None Include="Makefile" />
     <None Include="VDISP.ASM" />
     <None Include="VEND.ASM" />
     <None Include="VFILE.ASM" />
     <None Include="View.asm" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="ftp.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

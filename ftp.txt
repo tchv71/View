@@ -1,6 +1,6 @@
-open 192.168.31.250 1021
-cd A.KDI
-delete view.com
-send view.com
+open 192.168.31.250
+cd BOOT
+delete VIEW.RK
+send VIEW.RK
 close
 bye

@@ -76,8 +76,11 @@ ENDIF
 IFDEF SHELL
 	lxi	H,fntName
 	call	LoadFont
+	lxi	b,0
+	call	T_SetAddrWrite
 ENDIF
 	call	SaveScreen
+	call	DispInit
 
 	lxi	h,@RamStart
 	shld	RamStart
@@ -86,7 +89,6 @@ ENDIF
 	call	BuffInit
 	call	RdIntoBuff	; Read first records into file
 
-	call	DispInit
 nxt:	lhld	DispldText
 	lda	DispHex
 	ora	a
@@ -105,7 +107,6 @@ nxt00:
 	call	BIOS_CONIN
 	call	CheckKey
 	jmp	nxt
-
 
 FS_OPEN	equ	2
 FS_SEEK	equ	3

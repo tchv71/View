@@ -930,7 +930,7 @@ LoadFont:
 	pop	d
 	ora	a
 	rnz
-	lxi	b,1000h
+	lxi	b,2000h
 	call	T_SetAddrWrite
 	;CALL	T_WriteBytes
 ; HL - buffer in RAm
