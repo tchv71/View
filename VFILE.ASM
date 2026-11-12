@@ -668,16 +668,12 @@ rdb00:
 rdb01:
 	shld	BuffEnd
 	shld	FileEnd
-	pop	h
+	;pop	h
 	ret
 _FullRec:
-	;pop	h
 	ora	a
 	jnz	_Eof
-	;xchg
 	lhld	RecSize
-	;mov	b,h
-	;mov	c,l
 	dad	d
 	xchg
 	lhld	EndRec
@@ -686,7 +682,6 @@ _FullRec:
 	lhld	RamEnd
 	call	?cdehl
 	jz	stopRead
-	;xchg
 	push	d
 	lhld	fileSize
 	xchg
