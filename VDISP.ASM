@@ -41,7 +41,16 @@ _in_port:
 	IN	0
 	RET
 
-_out:	INR	H
+SetPalmCtr:
+	mov	c,a
+	LHLD	PALM_CTR_ADR
+	mov	a,h
+	ora	l
+	rz
+	mov	a,c
+;	jmp	_out
+_out:
+	INR	H
 	DCR	H
 	jz	_out_port
 	MOV	M,A
@@ -54,14 +63,7 @@ _out_port:
 	OUT	0
 	RET
 
-SetPalmCtr:
-	mov	c,a
-	LHLD	PALM_CTR_ADR
-	mov	a,h
-	ora	l
-	rz
-	mov	a,c
-	jmp	_out
+
 
 
 ; Note: this routine should be called once at start of program
@@ -910,4 +912,57 @@ VT37:
 	call	_out	; dma+0fh
 	ret
 ENDIF
+
+LoadFont:
+	MVI	D,O_OPEN
+	mvi	a, FS_OPEN
+	call	fs
+	ora	a
+	rnz
+
+	lxi	d,Scr1
+	lxi	h,4096
+	push	h
+	push	d
+	mvi	a,FS_READ
+	call	fs
+	pop	h
+	pop	d
+	ora	a
+	rnz
+	lxi	b,1000h
+	call	T_SetAddrWrite
+	;CALL	T_WriteBytes
+; HL - buffer in RAm
+; DE - byte count
+T_WriteBytes:
+	MOV	A,M
+	OUT	VDP
+	INX	H
+	DCX	D
+	MOV	A,D
+	ORA	E
+	JNZ	T_WriteBytes
+	RET
+
+
+
+; BC - address to write
+T_SetAddrWrite:
+	MOV	A,B
+	ORI	40h
+	MOV	B,A
+; BC - address to read
+T_SetAddrRead:
+	DI
+	MOV	A,C
+	OUT	VDP+1
+	MOV	A,B
+	OUT	VDP+1
+	EI
+	RET
+
+
+fntName:	DB	"BOOT/F8X16R.BIN",0
+
 ;	end

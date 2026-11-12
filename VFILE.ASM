@@ -73,6 +73,10 @@ IFNDEF SHELL
 	call	BIOS_CONFIG	; Configure ports
 ENDIF
 
+IFDEF SHELL
+	lxi	H,fntName
+	call	LoadFont
+ENDIF
 	call	SaveScreen
 
 	lxi	h,@RamStart
@@ -102,6 +106,10 @@ nxt00:
 	call	CheckKey
 	jmp	nxt
 
+
+FS_OPEN	equ	2
+FS_SEEK	equ	3
+FS_READ	equ	4
 fs:
 	jmp	0f800h
 
@@ -275,7 +283,7 @@ IFNDEF SHELL
 ELSE
 	lxi	h, ShPath
 	lxi	d, cmdStr
-	xra	a
+	xra	a ; FS_EXEC
 	call	fs
 ENDIF
 
@@ -574,7 +582,7 @@ ELSE
 O_OPEN	equ	0
 	lhld	fs_cmdLine
 	MVI	D,O_OPEN
-	mvi	a, 2
+	mvi	a, FS_OPEN
 	call	fs
 ENDIF
 	inr	a
@@ -619,7 +627,7 @@ SEEK_END	equ	2
 	push	h
 	lxi	h,0
 	mvi	b,100
-	mvi	a,3
+	mvi	a, FS_SEEK
 	call	fs
 	shld	fileSize
 	mov	a,e
@@ -628,11 +636,7 @@ SEEK_END	equ	2
 @rdbuf:
 	push	d
 	lhld	EndRec
-IFNDEF SHELL
-	call	mul128
-ELSE
 	call	mul512
-ENDIF
 	lda	fileSizeHi
 	cmp	c
 	jnz	rdb00
@@ -647,12 +651,12 @@ rdb00:
 	mov	e, c
 	mvi	d, 0
 	mvi	b, SEEK_START
-	mvi	a, 3
+	mvi	a, FS_SEEK
 	call	fs
 	pop	d
 	push	d
 	lhld	RecSize
-	mvi	a,4
+	mvi	a, FS_READ
 	call	fs
 	mov	e,a
 	 push	d
@@ -752,11 +756,11 @@ ELSE
 	push	d
 	mvi	d,0
 	mov	e,c
-	mvi	a,3
+	mvi	a, FS_SEEK
 	call	fs
 	pop	d
 	lhld	RecSize
-	mvi	a,4
+	mvi	a, FS_READ
 	call	fs
 	jmp	rdate_00
 rdate_exit:
@@ -789,7 +793,7 @@ IFNDEF	SHELL
 ELSE
 	call	mul512
 	lxi	d,0
-	mvi	a,3
+	mvi	a, FS_SEEK
 	call	fs
 ENDIF
 	call	AllocStart
@@ -800,7 +804,7 @@ IFDEF SHELL
 	syscall	@randrd
 ELSE
 	lhld	RecSize
-	mvi	a,4
+	mvi	a, FS_READ
 	call	fs
 ENDIF
 	;lhld	EndRec
