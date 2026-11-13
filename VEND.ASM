@@ -50,6 +50,7 @@ IFNDEF	MSX
 	malloc	Scr2,1100h
 ELSE
 	malloc	Scr1, 4814
+	malloc	FontBuf, 512
 ENDIF
 	malloc	TransTbl,512+1	; Transcode Table + RamDelim
 ptr	set (ptr/128+1)*128

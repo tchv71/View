@@ -73,12 +73,12 @@ IFNDEF SHELL
 	call	BIOS_CONFIG	; Configure ports
 ENDIF
 
+	call	SaveScreen
+	call	DispInit
 IFDEF SHELL
 	lxi	H,fntName
 	call	LoadFont
 ENDIF
-	call	SaveScreen
-	call	DispInit
 
 	lxi	h,@RamStart
 	shld	RamStart
@@ -102,9 +102,12 @@ nxt:	lhld	DispldText
 	shld	DispldText
 nxt00:
 	call	DisplyScr
+	sta	?FileNotEnded
 	call	BIOS_CONIN
 	call	CheckKey
 	jmp	nxt
+
+?FileNotEnded:	ds	1
 
 FS_OPEN	equ	2
 FS_SEEK	equ	3
@@ -163,40 +166,40 @@ nxt01:
 
 IFNDEF SHELL
 BIOS_CONFIG:
-	LHLD	1
-	LXI	B,30H
-	DAD	B
-	MOV	A,M
-	CPI	JMP
-	RNZ
-	INX	H
-	PUSH	D
-	MOV	E,M
-	INX	H
-	MOV	D,M
-	XCHG
-	POP	D
-	PCHL
+	lhld	1
+	lxi	b,30h
+	dad	b
+	mov	a,m
+	cpi	jmp
+	rnz
+	inx	h
+	push	d
+	mov	e,m
+	inx	h
+	mov	d,m
+	xchg
+	pop	d
+	pchl
 
 
 BIOS_CONIN:
-	LHLD	1
-	LXI	D,6
-	DAD	D
-	INX	H
-	MOV	E,M
-	INX	H
-	MOV	D,M
-	XCHG
-	INX	H
-	MOV	E,M
-	INX	H
-	MOV	D,M
-	XCHG
-	PCHL
+	lhld	1
+	lxi	d,6
+	dad	d
+	inx	h
+	mov	e,m
+	inx	h
+	mov	d,m
+	xchg
+	inx	h
+	mov	e,m
+	inx	h
+	mov	d,m
+	xchg
+	pchl
 ELSE
 BIOS_CONIN:
-jmp	0f803h
+	jmp	0f803h
 ENDIF
 
 BuffInit:
@@ -277,6 +280,7 @@ _exit:
 	mov	a,b
 	out	vdp+1
 	call	RestoreScreen
+	call	0FACEh
 IFNDEF SHELL
 	jmp	0
 ELSE
@@ -398,7 +402,11 @@ SymBack:
 	mov	a, m
 	ret
 
-_StrDn:	lhld	DispldText
+_StrDn:
+	lda 	?FileNotEnded
+	ora	a
+	rz
+	lhld	DispldText
 	lda	DispHex
 	ora	a
 	jnz	_StrDnHex
@@ -697,7 +705,7 @@ _FullRec:
 	pop	d
 	jp	@rdbuf
 	xchg
-	shld	RamEnd
+	;shld	RamEnd
 	shld	FileEnd
 stopRead:
 	shld	BuffEnd

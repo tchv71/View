@@ -256,6 +256,10 @@ ENDIF
 	mvi	b,ScrWidth
 loop:	push	h
 	call	FirstPass
+IFDEF SHELL
+	pop	h
+	ret
+ENDIF
 	lhld	RomCounter
 	inx	h
 	shld	RomCounter
@@ -419,6 +423,7 @@ dh03:	ldax	d
 	jz	dh06
 	dcr	b
 	jnz	dh_s
+	mvi	a,1
 	stc
 	ret
 
@@ -437,10 +442,11 @@ dh014:
 
 
 dh06:	mvi	c,ScrWidth
+_SetEnd:
 	call	ClrLine
 	dcr	b
 	jnz	dh06
-	stc
+	xra	a
 	ret
 
 ClrLine:
@@ -500,10 +506,10 @@ NextSym:
 	jz	_EndRam
 	;cpi	RamDelim
 	;jz	_EndRam
+ns02:
 	lhld	BuffEnd
 	call	?cdehl
 	jz	_EndBuff
-ns02:
 	ldax	d
 	mov	c, a
 	inx	d
@@ -551,22 +557,8 @@ ENDIF
 _EndStr:inr	b
 	dcr	b
 	jz	_NxtStr
-_SetEnd:
-IFNDEF	MSX
-	mvi	m,20h	; We can freely fill with space
-	inx	h
-	dcr	b
-	jnz	_SetEnd
-ELSE
-	mvi	a, 20h
-_SetEnd01:
-	out	VDP
-	;mvi	a,4fh
-	;out	VDP
-	dcr	b
-	jnz	_SetEnd01
-ENDIF
-
+	mov	c, b
+	call	_SetEnd
 _NxtStr:mvi	b,ScrWidth
 	lda	CurStr
 	dcr	a
@@ -577,7 +569,9 @@ IFNDEF	MSX
 	mvi	m,0	; Terminate chain
 ENDIF
 	stc	; The end of screen
+	mvi	a, 1
 	ret
+
 
 _EndRam:
 	xchg
@@ -587,8 +581,11 @@ _EndRam:
 
 _EndBuff:
 	call	RdAtEnd
-	jnz	SetSym
-	jmp	NextSym
+	jz	NextSym;SetSym
+	mov	c,b
+	lda	CurStr
+	mov	b,a
+	jmp	_SetEnd
 
 _Tab:	mov	a,b
 	dcr	a
@@ -920,19 +917,27 @@ LoadFont:
 	ora	a
 	rnz
 
-	lxi	d,Scr1
-	lxi	h,4096
+	lxi	b,2000h
+	call	T_SetAddrWrite
+	mvi	c, 4096 / 512;
+lf00:
+	lxi	d,FontBuf
+	lxi	h, 512
 	push	h
 	push	d
+	push	b
 	mvi	a,FS_READ
 	call	fs
+	pop	b
 	pop	h
 	pop	d
 	ora	a
 	rnz
-	lxi	b,2000h
-	call	T_SetAddrWrite
-	;CALL	T_WriteBytes
+	call	T_WriteBytes
+	dcr	c
+	jnz	lf00
+	ret
+
 ; HL - buffer in RAm
 ; DE - byte count
 T_WriteBytes:
@@ -944,8 +949,6 @@ T_WriteBytes:
 	ORA	E
 	JNZ	T_WriteBytes
 	RET
-
-
 
 ; BC - address to write
 T_SetAddrWrite:
