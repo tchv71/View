@@ -280,10 +280,10 @@ _exit:
 	mov	a,b
 	out	vdp+1
 	call	RestoreScreen
-	call	0FACEh
 IFNDEF SHELL
 	jmp	0
 ELSE
+	call	0FACEh
 	lxi	h, ShPath
 	lxi	d, cmdStr
 	xra	a ; FS_EXEC

@@ -558,7 +558,7 @@ _EndStr:inr	b
 	dcr	b
 	jz	_NxtStr
 	mov	c, b
-	call	_SetEnd
+	call	ClrLine
 _NxtStr:mvi	b,ScrWidth
 	lda	CurStr
 	dcr	a
