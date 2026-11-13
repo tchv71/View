@@ -3,7 +3,7 @@ Both for CP/M and rk86 shell by Alex Morozov
 ## Кеуs
 |**Key**|**Action**|
 |---------|---------|
-| **4**|view HEX|
+| **4**|view HEX/text|
 | **Up**| up a line|
 |**Down**|down a line|
 |**Ctrl+Up**|up a page
