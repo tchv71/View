@@ -911,6 +911,7 @@ VT37:
 ENDIF
 
 LoadFont:
+IFDEF	SHELL
 	MVI	D,O_OPEN
 	mvi	a, FS_OPEN
 	call	fs
@@ -936,6 +937,7 @@ lf00:
 	call	T_WriteBytes
 	dcr	c
 	jnz	lf00
+ENDIF
 	ret
 
 ; HL - buffer in RAm
