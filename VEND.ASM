@@ -6,7 +6,7 @@
 
 	dseg
 	.dephase
-	.phase 9B0h
+	.phase 0a13h
 
 fcb:	ds	25h
 RamStart:	ds	2

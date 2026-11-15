@@ -33,6 +33,8 @@
     <None Include="..\rk_maxi\ftp.bat">
       <Filter>Source Files</Filter>
     </None>
+    <None Include="v.noi" />
+    <None Include="VIEW.PRN" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="ftp.txt" />

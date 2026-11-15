@@ -181,7 +181,14 @@ IFDEF	MSX
 	mov	a,b
 	out	vdp+1
 	jmp	DsplScr
+ELSE
+	call	DsplScr
+	call	SetDma
+	jmp	ChgScrAddr
+ENDIF
+
 SaveScreen:
+IFDEF MSX
 	lxi	h,Scr1
 	LXI	D, 0F759h
 	LXi	B, ScrWidth * ScrHeight * 2
@@ -204,8 +211,10 @@ ss02:
 	inx	h
 	dcr	c
 	jnz	ss02
+ENDIF
 	ret
 RestoreScreen:
+IFDEF MSX
 	lxi	h,Scr1
 	LXI	D, 0F759h
 	LXi	B, ScrWidth * ScrHeight * 2
@@ -230,10 +239,6 @@ rs02:
 	dcr	c
 	jnz	rs02
 	ret
-ELSE
-	call	DsplScr
-	call	SetDma
-	jmp	ChgScrAddr
 ENDIF
 
 ; Variables and registers:
@@ -256,7 +261,7 @@ ENDIF
 	mvi	b,ScrWidth
 loop:	push	h
 	call	FirstPass
-IFDEF SHELL
+IFDEF MSX
 	pop	h
 	ret
 ENDIF
@@ -296,6 +301,9 @@ TrnsSym	macro
 	pop	h
 	endm
 
+
+SPACE	equ	' '
+
 FirstPass:
 IFNDEF	MSX
 	inx	h	; Reserve space for ROM selection byte
@@ -307,11 +315,14 @@ ENDIF
 	jz	NextSym
 
 	mvi	b, ScrHeight
+IFDEF MSX
 	lxi	h,4000h
 	mov	a,l
 	out	VDP+1
 	mov	a,h
 	out	VDP+1
+ENDIF
+	shld	ScrTemp
 dh_s:
 	push	b
 	push	d
@@ -375,7 +386,7 @@ dh013:	pop	h
 dh01:	ldax	d
 	inx	d
 	call	ByteHexToBuf
-	mvi	m, 0
+	mvi	m, SPACE
 	inx	h
 	dcr	c
 	jnz	dh01
@@ -387,7 +398,7 @@ dh01:	ldax	d
 	;mvi	c,16
 dh02:	ldax	d
 	inx	d
-	cpi	20h
+	cpi	SPACE
 	jnc	$+5
 	mvi	a, '.'
 	mov	m, a
@@ -397,17 +408,23 @@ dh02:	ldax	d
 	call	_FillZeroB
 	push	d
 	mvi	c,71
-	xchg
-	lhld	ScrAddr
-	xchg
+	;xchg
+	lhld	ScrTemp
+	;xchg
 	lxi	d, StrBuf
 dh03:	ldax	d
 	inx	d
+IFDEF MSX
 	out	VDP
+ELSE
+	mov	m,a
+	inx	h
+ENDIF
 	dcr	c
 	jnz	dh03
 	mvi	c,9
 	call	ClrLine
+	shld	ScrTemp
 	pop	d
 	;ldax	d
 	;cpi	RamDelim
@@ -420,6 +437,9 @@ dh03:	ldax	d
 	cz	RdAtEnd
 	lhld	FileEnd
 	call	?cdehl
+IFNDEF MSX
+	lhld	ScrTemp
+ENDIF
 	jz	dh06
 	dcr	b
 	jnz	dh_s
@@ -427,13 +447,15 @@ dh03:	ldax	d
 	stc
 	ret
 
+ScrTemp:	DS	2
+
 _FillZeroB:
 	push	b
 	inr	b
 dh012:
 	dcr	b
 	jz	dh014
-	mvi	m,0
+	mvi	m,SPACE
 	inx	h
 	jmp	dh012
 dh014:
@@ -450,9 +472,15 @@ _SetEnd:
 	ret
 
 ClrLine:
-	xra	a
+	;xra	a
+	mvi	a,SPACE
 dh07:
+IFDEF MSX
 	out	VDP
+ELSE
+	mov	m,a
+	inx	h
+ENDIF
 	dcr	c
 	jnz	dh07
 	ret
@@ -513,7 +541,7 @@ ns02:
 	ldax	d
 	mov	c, a
 	inx	d
-	cpi	20h
+	cpi	SPACE
 	jnc	SetSym
 	cpi	9h
 	jz	_Tab
@@ -524,9 +552,9 @@ ns02:
 	cpi	1ah
 	jnz	StSym
 IFNDEF	MSX
-	mvi	m,20h
+	mvi	m,SPACE
 ELSE
-	mvi	a, 20h
+	mvi	a, SPACE
 	OUT	VDP
 	;mvi	a, 4fh
 	;out	VDP
@@ -536,7 +564,7 @@ ENDIF
 	dcr	b
 	jz	_EndScr;_NxtStr
 	jmp	NextSym
-StSym:	mvi	a,20h	; Other CNTRL symbols are not displayed
+StSym:	mvi	a,SPACE	; Other CNTRL symbols are not displayed
 SetSym:	;TrnsSym	; a = Translated symbol , c=its ROM set
 IFNDEF	MSX
 	mov	m,a
@@ -593,10 +621,10 @@ _Tab:	mov	a,b
 	inr	a
 _SetTab:
 IFNDEF	MSX
-	mvi	m,20h	;   Space is located in any ROM
+	mvi	m,SPACE	;   Space is located in any ROM
 ELSE
 	mov	c, a
-	mvi	a, 20h
+	mvi	a, SPACE
 	OUT	VDP
 	mov	a, c
 ENDIF
@@ -648,14 +676,14 @@ CrRom4:	check
 	cpi	40h	; Digits and special symbols
 	jc	@set4
 	ani	7fh
-	xri	20h
+	xri	SPACE
 @set4:	cont	CrRom4
 
 CrRom3:	check
 	cont	CrRom3
 
 CrRom2:	check
-	cpi	20h
+	cpi	SPACE
 	jnz	@22
 	xra	a
 	jmp	@set2
@@ -704,7 +732,7 @@ Rom3:	mvi	a,84h	; Latin table
 ENDIF
 
 ;****************************************************
-CharSet:cpi	20h	; Space
+CharSet:cpi	SPACE	; Space
 	mvi	b,1111b
 	rz
 	push	h
@@ -802,7 +830,7 @@ _@out	macro	val
 
 IFNDEF	MSX
 ;****************************************************
-SETSCR:
+SetScr:
 	lhld	DISP_ADR
 	inx	h
 	xra	a
@@ -858,7 +886,7 @@ WtRvv:
 	lhld	RomCounter
 ;	lxi	b,490fh
 ;	lxi	b,4923h
-	lxi	b,495fh
+	lxi	b,895fh
 	dad	b
 	xchg
 	mov	a,e
@@ -911,6 +939,7 @@ VT37:
 ENDIF
 
 LoadFont:
+IFDEF MSX
 IFDEF	SHELL
 	MVI	D,O_OPEN
 	mvi	a, FS_OPEN
@@ -938,8 +967,10 @@ lf00:
 	dcr	c
 	jnz	lf00
 ENDIF
+ENDIF
 	ret
 
+IFDEF MSX
 ; HL - buffer in RAm
 ; DE - byte count
 T_WriteBytes:
@@ -966,7 +997,7 @@ T_SetAddrRead:
 	OUT	VDP+1
 	EI
 	RET
-
+ENDIF
 
 fntName:	DB	"BOOT/F8X16R.BIN",0
 

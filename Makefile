@@ -20,7 +20,7 @@ View.REL: View.ASM $(ASMS)
 	../m80noi/x64/Release/m80noi.exe VIEW.PRN
 
 View.COM: VIEW.REL
-	$(M80PATH)/L80 /P:103/d:9B0,VIEW,MYLIB/S,$@/Y/N/E/U
+	$(M80PATH)/L80 /P:103/d:b00,VIEW,MYLIB/S,$@/Y/N/E/U
 	../m80noi/x64/Release/m80noi.exe view.prn
 #	ftp.bat
 
@@ -29,6 +29,6 @@ send: View.rkl
 	cmd /C copy /B  $< $(PORT)
 
 View.rkl: View.COM
-	../makerk/Release/makerk.exe 100 $< $@ 8b0
+	../makerk/Release/makerk.exe 100 $< $@ 990
 	copy view.rkl view.rk
 	ftp.bat

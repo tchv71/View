@@ -91,10 +91,12 @@
   <ItemGroup>
     <None Include="..\rk_maxi\ftp.bat" />
     <None Include="Makefile" />
+    <None Include="v.noi" />
     <None Include="VDISP.ASM" />
     <None Include="VEND.ASM" />
     <None Include="VFILE.ASM" />
     <None Include="View.asm" />
+    <None Include="VIEW.PRN" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="ftp.txt" />

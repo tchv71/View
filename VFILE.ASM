@@ -49,6 +49,14 @@ syscall	macro	call_number
 
 ;public	RamStart
 
+
+IF 1
+	lxi	h, FNAME
+	lxi	d,0
+	lxi	b,0d507h;82C0h
+	jmp	Strt
+FNAME:	db	"CPM/README.TXT",0
+ENDIF
 Strt:
 	push	h
 	push	b
@@ -275,10 +283,12 @@ _disp_hex:
 
 _exit:
 	lxi	b,8150h ; Unset increment by one
+IFDEF MSX
 	mov	a,c
 	out	VDP+1
 	mov	a,b
 	out	vdp+1
+ENDIF
 	call	RestoreScreen
 IFNDEF SHELL
 	jmp	0
