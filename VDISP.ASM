@@ -432,6 +432,9 @@ dh02:	ldax	d
 	cpi	SPACE
 	jnc	$+5
 	mvi	a, '.'
+	cpi	80h
+	jc	$+5
+	mvi	a, '.'
 	mov	m, a
 	inx	h
 	dcr	c

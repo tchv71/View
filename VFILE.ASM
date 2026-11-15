@@ -55,7 +55,7 @@ IF 1
 	lxi	d,0
 	lxi	b,0d507h;82C0h
 	jmp	Strt
-FNAME:	db	"CPM/README.TXT",0
+FNAME:	db	"CPM/8X16ENG.FNT",0
 ENDIF
 Strt:
 	push	h
