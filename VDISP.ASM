@@ -183,8 +183,11 @@ IFDEF	MSX
 	jmp	DsplScr
 ELSE
 	call	DsplScr
+	push	psw
 	call	SetDma
-	jmp	ChgScrAddr
+	call	ChgScrAddr
+	pop	psw
+	ret
 ENDIF
 
 SaveScreen:
@@ -259,7 +262,7 @@ ENDIF
 	mvi	a,ScrHeight
 	sta	CurStr
 	mvi	b,ScrWidth
-loop:	push	h
+DS_Loop:	push	h
 	call	FirstPass
 IFDEF MSX
 	pop	h
@@ -272,7 +275,8 @@ ENDIF
 	push	psw
 	call	SecondPass
 	pop	psw
-	jnc	loop
+	;ret
+	jnc	DS_Loop
 IFNDEF	MSX
 	mvi	b,2*ScrWidth
 _ClrEnd:mvi	m,0
@@ -312,7 +316,7 @@ IFNDEF	MSX
 ENDIF
 	lda	DispHex
 	ora	a
-	jz	NextSym
+	jz	FP_Text
 
 	mvi	b, ScrHeight
 IFDEF MSX
@@ -323,7 +327,7 @@ IFDEF MSX
 	out	VDP+1
 ENDIF
 	shld	ScrTemp
-dh_s:
+FPH_Loop:
 	push	b
 	push	d
 	lhld	BuffStart
@@ -355,9 +359,36 @@ ENDIF
 	call	ByteHexToBuf
 	mov	a,e
 	call	ByteHexToBuf
-	mvi	m, 0
+	mvi	m, SPACE
 	inx	h
 	pop	d
+	call	FPH_FillBuf
+	call	FPH_CopyBuf
+	;ldax	d
+	;cpi	RamDelim
+	;jnz	dh04
+	pop	b
+	;ldax	d
+	;ani	BuffDelimE
+	lhld	BuffEnd
+	call	?cdehl
+	cz	RdAtEnd
+	lhld	FileEnd
+	call	?cdehl
+IFNDEF MSX
+	lhld	ScrTemp
+ENDIF
+	jz	FPH_FileEnd
+	dcr	b
+	jnz	FPH_Loop
+	mvi	a,1
+	stc
+	ret
+
+ScrTemp:	DS	2
+
+
+FPH_FillBuf:
 	push	d
 	push	h
 	lhld	BuffEnd
@@ -405,7 +436,22 @@ dh02:	ldax	d
 	inx	h
 	dcr	c
 	jnz	dh02
-	call	_FillZeroB
+	;call	_FillZeroB
+	;ret
+_FillZeroB:
+	push	b
+	inr	b
+dh012:
+	dcr	b
+	jz	dh014
+	mvi	m,SPACE
+	inx	h
+	jmp	dh012
+dh014:
+	pop	b
+	ret
+
+FPH_CopyBuf:
 	push	d
 	mvi	c,71
 	;xchg
@@ -426,49 +472,17 @@ ENDIF
 	call	ClrLine
 	shld	ScrTemp
 	pop	d
-	;ldax	d
-	;cpi	RamDelim
-	;jnz	dh04
-	pop	b
-	;ldax	d
-	;ani	BuffDelimE
-	lhld	BuffEnd
-	call	?cdehl
-	cz	RdAtEnd
-	lhld	FileEnd
-	call	?cdehl
-IFNDEF MSX
-	lhld	ScrTemp
-ENDIF
-	jz	dh06
-	dcr	b
-	jnz	dh_s
-	mvi	a,1
-	stc
-	ret
-
-ScrTemp:	DS	2
-
-_FillZeroB:
-	push	b
-	inr	b
-dh012:
-	dcr	b
-	jz	dh014
-	mvi	m,SPACE
-	inx	h
-	jmp	dh012
-dh014:
-	pop	b
 	ret
 
 
-dh06:	mvi	c,ScrWidth
+FPH_FileEnd:
+	mvi	c,ScrWidth
 _SetEnd:
 	call	ClrLine
 	dcr	b
-	jnz	dh06
+	jnz	FPH_FileEnd
 	xra	a
+	stc
 	ret
 
 ClrLine:
@@ -522,21 +536,27 @@ AddDE_HL:
 	mov	d, a
 	ret
 
+; First pass, text
 ; de - displayed text	
-NextSym:
+FP_Text:
 	;mov	a, e
 	;ani	7fh
 	lda	RamEnd
 	cmp	e
 	jnz	ns02
+	push	h
 	lhld	RamEnd
 	call	?cdehl
+	pop	h
 	jz	_EndRam
 	;cpi	RamDelim
 	;jz	_EndRam
 ns02:
+
+	push	h
 	lhld	BuffEnd
 	call	?cdehl
+	pop	h
 	jz	_EndBuff
 	ldax	d
 	mov	c, a
@@ -548,7 +568,7 @@ ns02:
 	cpi	0dh
 	jz	_EndStr
 	cpi	0ah
-	jz	NextSym	; Skip LF symbol
+	jz	FP_Text	; Skip LF symbol
 	cpi	1ah
 	jnz	StSym
 IFNDEF	MSX
@@ -563,10 +583,11 @@ ENDIF
 	dcx	d
 	dcr	b
 	jz	_EndScr;_NxtStr
-	jmp	NextSym
+	jmp	FP_Text
 StSym:	mvi	a,SPACE	; Other CNTRL symbols are not displayed
-SetSym:	;TrnsSym	; a = Translated symbol , c=its ROM set
+SetSym:
 IFNDEF	MSX
+	TrnsSym	; a = Translated symbol , c=its ROM set
 	mov	m,a
 	lda	RomSet
 	ana	c
@@ -579,7 +600,7 @@ ELSE
 	;out	VDP
 ENDIF
 	dcr	b
-	jnz	NextSym
+	jnz	FP_Text
 	jmp	_NxtStr
 
 _EndStr:inr	b
@@ -591,7 +612,7 @@ _NxtStr:mvi	b,ScrWidth
 	lda	CurStr
 	dcr	a
 	sta	CurStr
-	jnz	NextSym
+	jnz	FP_Text
 _EndScr:
 IFNDEF	MSX
 	mvi	m,0	; Terminate chain
@@ -605,11 +626,11 @@ _EndRam:
 	xchg
 	lhld	RamStart
 	xchg
-	jmp	NextSym
+	jmp	FP_Text
 
 _EndBuff:
 	call	RdAtEnd
-	jz	NextSym;SetSym
+	jz	FP_Text;SetSym
 	mov	c,b
 	lda	CurStr
 	mov	b,a
@@ -633,7 +654,7 @@ ENDIF
 	jz	_NxtStr
 	dcr	a
 	jnz	_SetTab
-	jmp	NextSym
+	jmp	FP_Text
 
 _EndChain:
 IFNDEF	MSX

@@ -4,9 +4,9 @@
 ;				     5-dec-2025         *
 ;********************************************************
 
-	dseg
-	.dephase
-	.phase 0a13h
+	;dseg
+	;.dephase
+	;.phase 0a25h
 
 fcb:	ds	25h
 RamStart:	ds	2
@@ -26,7 +26,7 @@ fs_cmdLine:	DS	2
 fs_selfName:	DS	2
 ENDIF
 
-	dseg
+	;dseg
 ScrAddr:	ds	2
 AltScr:		ds	2
 RomCounter:	ds	2
@@ -42,7 +42,7 @@ label	equ	ptr
 ptr	set	ptr+size
 	endm
 
-	dseg
+	;dseg
 ptr	set	$
 
 IFNDEF	MSX

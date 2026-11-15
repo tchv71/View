@@ -29,6 +29,6 @@ send: View.rkl
 	cmd /C copy /B  $< $(PORT)
 
 View.rkl: View.COM
-	../makerk/Release/makerk.exe 100 $< $@ 990
+	../makerk/Release/makerk.exe 100 $< $@ 925
 	copy view.rkl view.rk
 	ftp.bat
