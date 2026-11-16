@@ -46,8 +46,8 @@ ptr	set	ptr+size
 ptr	set	$
 
 IFNDEF	MSX
-	malloc	Scr1,1100h	; Screen buffers
-	malloc	Scr2,1100h
+	malloc	Scr1,1300h	; Screen buffers
+	malloc	Scr2,1300h
 ELSE
 	malloc	Scr1, 4814
 	malloc	FontBuf, 512

@@ -55,7 +55,7 @@ IF 1
 	lxi	d,0
 	lxi	b,0d507h;82C0h
 	jmp	Strt
-FNAME:	db	"CPM/8X16ENG.FNT",0
+FNAME:	db	"VIEW/M80.DOC",0
 ENDIF
 Strt:
 	push	h
@@ -82,7 +82,6 @@ IFNDEF SHELL
 ENDIF
 
 	call	SaveScreen
-	call	DispInit
 IFDEF SHELL
 	lxi	H,fntName
 	call	LoadFont
@@ -94,6 +93,7 @@ ENDIF
 
 	call	BuffInit
 	call	RdIntoBuff	; Read first records into file
+	call	DispInit
 
 nxt:	lhld	DispldText
 	lda	DispHex
@@ -516,15 +516,16 @@ Forv:	xchg
 ; Set BuffStart and buffer delimeters
 ; HL = BuffEnd
 SetBuffInfo:
-	lhld	BuffStart
-	mvi	a,BuffDelim
-	ora	m
-	mov	m,a
-	lhld	BuffEnd
-	mvi	a,BuffDelimE
-	ora	m
-	mov	m,a
 	ret
+	;lhld	BuffStart
+	;mvi	a,BuffDelim
+	;ora	m
+	;mov	m,a
+	;lhld	BuffEnd
+	;mvi	a,BuffDelimE
+	;ora	m
+	;mov	m,a
+	;ret
 
 ; Allocates RecSize bytes at start of buffer
 ; Last buffer record will be lost
@@ -713,7 +714,7 @@ _FullRec:
 	inx	h
 	call	?cdehl
 	pop	d
-	jp	@rdbuf
+	jnc	@rdbuf
 	xchg
 	;shld	RamEnd
 	shld	FileEnd
