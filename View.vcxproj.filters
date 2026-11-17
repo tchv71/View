@@ -35,6 +35,9 @@
     </None>
     <None Include="v.noi" />
     <None Include="VIEW.PRN" />
+    <None Include="ViewM.asm">
+      <Filter>Source Files</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Text Include="ftp.txt" />

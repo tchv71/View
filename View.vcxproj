@@ -97,6 +97,7 @@
     <None Include="VFILE.ASM" />
     <None Include="View.asm" />
     <None Include="VIEW.PRN" />
+    <None Include="ViewM.asm" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="ftp.txt" />
