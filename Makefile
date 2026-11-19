@@ -13,15 +13,24 @@ clean:
 	del *.rkl
 	del *.COM
 
-all: View.rkl ViewM.rkl Makefile
+all: View.rkl ViewM.rkl ViewCpm.com Makefile
 
 View.REL: View.ASM $(ASMS)
 	$(M80PATH)/M80 =$</I/L
 	../m80noi/x64/Release/m80noi.exe VIEW.PRN
 
+ViewCpm.REL: ViewCpm.ASM $(ASMS)
+	$(M80PATH)/M80 =$</I/L
+	../m80noi/x64/Release/m80noi.exe VIEWCPM.PRN
+
 View.COM: VIEW.REL
 	$(M80PATH)/L80 /P:103/d:b00,VIEW,MYLIB/S,$@/Y/N/E/U
 	../m80noi/x64/Release/m80noi.exe view.prn
+#	ftp.bat
+ViewCpm.COM: VIEWCPM.REL
+	$(M80PATH)/L80 /P:103/d:b00,VIEWCPM,MYLIB/S,$@/Y/N/E/U
+	../m80noi/x64/Release/m80noi.exe viewcpm.prn
+	copy ViewCpm.com View.COM
 #	ftp.bat
 ViewM.REL: ViewM.ASM $(ASMS)
 	$(M80PATH)/M80 =$</I/L

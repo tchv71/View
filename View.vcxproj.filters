@@ -38,6 +38,9 @@
     <None Include="ViewM.asm">
       <Filter>Source Files</Filter>
     </None>
+    <None Include="ViewCpm.asm">
+      <Filter>Source Files</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Text Include="ftp.txt" />
