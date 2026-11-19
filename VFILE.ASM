@@ -82,11 +82,6 @@ IFNDEF SHELL
 ENDIF
 
 	call	SaveScreen
-IFDEF SHELL
-	lxi	H,fntName
-	call	LoadFont
-ENDIF
-
 	lxi	h,@RamStart
 	shld	RamStart
 	call	OpenFil	; Open file, set RecSize
@@ -94,6 +89,11 @@ ENDIF
 	call	BuffInit
 	call	RdIntoBuff	; Read first records into file
 	call	DispInit
+IFDEF SHELL
+	lxi	H,fntName
+	call	LoadFont
+ENDIF
+
 
 nxt:	lhld	DispldText
 	lda	DispHex
